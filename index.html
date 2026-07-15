@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מנוף שירותים כלכליים — CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --ink:#152532; --ink2:#1e3346; --panel:#ffffff; --bg:#f2f4f6;
+  --gold:#c9a03a; --gold-soft:#f6edd8; --petrol:#1f6f6b; --petrol-soft:#e3f0ef;
+  --line:#e3e8ec; --txt:#22313f; --muted:#7b8a97;
+  --green:#1e8e5a; --green-bg:#e2f4ea; --yellow:#a97b12; --yellow-bg:#fbf1d7;
+  --red:#c0392b; --red-bg:#fbe4e1; --blue:#2b6cb0; --blue-bg:#e3edf8;
+  --radius:12px; --shadow:0 1px 3px rgba(21,37,50,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Heebo','Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:14.5px;line-height:1.5}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;width:100%;color:var(--txt)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--petrol);outline-offset:0;border-color:var(--petrol)}
+label{font-size:12.5px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px}
+.req::after{content:' *';color:var(--red)}
+
+/* ===== Login ===== */
+#loginScreen{position:fixed;inset:0;background:linear-gradient(155deg,var(--ink) 0%,var(--ink2) 55%,#274b5e 100%);display:flex;align-items:center;justify-content:center;z-index:200}
+.login-card{background:#fff;border-radius:18px;padding:44px 40px;width:min(400px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.logo-mark{width:46px;height:46px;border-radius:12px;background:var(--ink);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px}
+.login-card h1{font-size:21px;font-weight:800;color:var(--ink)}
+.login-card .sub{color:var(--muted);font-size:13px;margin-bottom:26px}
+.login-card .field{margin-bottom:14px}
+.btn-login{width:100%;padding:12px;background:var(--ink);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;margin-top:8px}
+.btn-login:hover{background:var(--ink2)}
+.login-err{color:var(--red);font-size:13px;min-height:18px;margin-top:10px;text-align:center}
+.login-hint{margin-top:18px;padding-top:14px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--muted);text-align:center}
+
+/* ===== Shell ===== */
+#app{display:none;min-height:100vh}
+.shell{display:flex;min-height:100vh}
+.sidebar{width:228px;background:var(--ink);color:#cfd9e0;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;right:0;z-index:50}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-brand .logo-mark{width:38px;height:38px;font-size:18px;background:rgba(255,255,255,.06)}
+.sb-brand b{color:#fff;font-size:15px;display:block;line-height:1.2}
+.sb-brand span{font-size:11px;color:#8fa0ad}
+.nav{flex:1;padding:14px 10px;overflow-y:auto}
+.nav button{display:flex;align-items:center;gap:11px;width:100%;padding:10px 12px;background:none;border:none;color:#cfd9e0;font-size:14px;border-radius:9px;margin-bottom:3px;text-align:right;position:relative}
+.nav button:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav button.active{background:rgba(201,160,58,.14);color:#fff;font-weight:600}
+.nav button.active::before{content:'';position:absolute;right:-10px;top:8px;bottom:8px;width:3px;background:var(--gold);border-radius:0 3px 3px 0}
+.nav .ico{width:20px;text-align:center;font-size:16px}
+.sb-user{padding:14px 16px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px}
+.sb-user .avatar{background:var(--gold);color:var(--ink)}
+.sb-user .nm{font-size:13.5px;color:#fff;font-weight:600;line-height:1.2}
+.sb-user .rl{font-size:11px;color:#8fa0ad}
+.sb-user button{margin-right:auto;background:none;border:1px solid rgba(255,255,255,.2);color:#cfd9e0;border-radius:7px;padding:4px 10px;font-size:12px}
+.sb-user button:hover{border-color:var(--gold);color:var(--gold)}
+.main{flex:1;margin-right:228px;padding:26px 30px 60px;max-width:1360px}
+.page-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.page-head h2{font-size:22px;font-weight:800;color:var(--ink)}
+.page-head .sub{font-size:13px;color:var(--muted);margin-top:2px}
+
+/* ===== Components ===== */
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--petrol);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;flex-shrink:0}
+.avatar.sm{width:26px;height:26px;font-size:11px}
+.avatars{display:flex}
+.avatars .avatar{margin-left:-7px;border:2px solid #fff}
+.btn{padding:9px 16px;border-radius:9px;border:none;font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px}
+.btn-primary{background:var(--ink);color:#fff}
+.btn-primary:hover{background:var(--ink2)}
+.btn-gold{background:var(--gold);color:var(--ink)}
+.btn-gold:hover{background:#b8912f}
+.btn-ghost{background:#fff;border:1px solid var(--line);color:var(--txt)}
+.btn-ghost:hover{border-color:var(--muted)}
+.btn-danger{background:var(--red-bg);color:var(--red)}
+.btn-sm{padding:5px 10px;font-size:12.5px;border-radius:7px}
+.icon-btn{background:none;border:none;padding:5px 7px;border-radius:6px;font-size:15px;color:var(--muted)}
+.icon-btn:hover{background:var(--bg);color:var(--ink)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:18px 20px}
+
+/* stat cards */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.stat .lbl{font-size:12.5px;color:var(--muted);font-weight:600}
+.stat .val{font-size:24px;font-weight:800;color:var(--ink);margin-top:4px}
+.stat .delta{font-size:12px;font-weight:600;margin-top:5px;display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px}
+.delta.up{color:var(--green);background:var(--green-bg)}
+.delta.down{color:var(--red);background:var(--red-bg)}
+.delta.flat{color:var(--muted);background:var(--bg)}
+.stat .note{font-size:11.5px;color:var(--muted);margin-top:5px}
+.stat.gold-top{border-top:3px solid var(--gold)}
+
+/* tables */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:right;padding:11px 14px;background:#f7f9fa;color:var(--muted);font-size:12px;font-weight:700;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:hover{background:#fafbfc}
+tbody tr:last-child td{border-bottom:none}
+.clickable{cursor:pointer}
+.empty-state{text-align:center;padding:44px 20px;color:var(--muted)}
+.empty-state .big{font-size:34px;margin-bottom:8px}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+.b-green{background:var(--green-bg);color:var(--green)}
+.b-yellow{background:var(--yellow-bg);color:var(--yellow)}
+.b-red{background:var(--red-bg);color:var(--red)}
+.b-blue{background:var(--blue-bg);color:var(--blue)}
+.b-gray{background:#eef1f3;color:var(--muted)}
+.b-purple{background:#eee7f8;color:#6b46c1}
+.b-gold{background:var(--gold-soft);color:#8a6a1c}
+.tag{display:inline-block;background:var(--petrol-soft);color:var(--petrol);border-radius:6px;padding:2px 8px;font-size:11.5px;font-weight:600;margin:2px 2px 0 0}
+select.inline-status{width:auto;padding:4px 26px 4px 8px;font-size:12.5px;border-radius:20px;font-weight:600;border:1px solid var(--line);background-color:#fff}
+
+/* toolbar */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar input[type=text],.toolbar input[type=search]{max-width:260px}
+.toolbar select{width:auto;min-width:140px}
+.toolbar .spacer{flex:1}
+
+/* dashboard grid */
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:16px}
+.chart-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.chart-card h3{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:12px}
+.chart-box{position:relative;height:260px}
+.bday-banner{background:linear-gradient(90deg,var(--gold-soft),#fff);border:1px solid #ecd9a8;border-radius:var(--radius);padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;font-weight:600}
+.bday-banner .big{font-size:24px}
+.bday-week{font-size:13px;color:var(--muted);font-weight:400;margin-top:3px}
+.quick-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+
+/* modal */
+.modal-back{position:fixed;inset:0;background:rgba(15,25,35,.5);display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;z-index:100;overflow-y:auto}
+.modal{background:#fff;border-radius:16px;width:min(640px,100%);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.3)}
+.modal.wide{width:min(820px,100%)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line)}
+.modal-head h3{font-size:17px;font-weight:800;color:var(--ink)}
+.modal-body{padding:20px 22px;overflow-y:auto}
+.modal-foot{display:flex;justify-content:flex-start;gap:10px;padding:14px 22px;border-top:1px solid var(--line)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid .full{grid-column:1/-1}
+.check-list{border:1px solid var(--line);border-radius:8px;padding:8px 10px;max-height:150px;overflow-y:auto;background:#fafbfc}
+.check-list label{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:500;color:var(--txt);margin:0;padding:4px 2px;cursor:pointer}
+.check-list input{width:auto}
+.detail-rows .row{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+.detail-rows .row b{color:var(--ink)}
+.detail-rows .row span:first-child{color:var(--muted)}
+.section-title{font-size:13px;font-weight:800;color:var(--ink);margin:18px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--gold-soft)}
+.file-chip{display:inline-flex;align-items:center;gap:6px;background:var(--blue-bg);color:var(--blue);border-radius:8px;padding:4px 10px;font-size:12.5px;font-weight:600;cursor:pointer;border:none}
+
+/* toast */
+#toast{position:fixed;bottom:24px;right:50%;transform:translateX(50%);background:var(--ink);color:#fff;padding:11px 22px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.3);z-index:300;display:none}
+#toast.err{background:var(--red)}
+
+/* pipeline summary */
+.pipe{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.pipe .cell{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;text-align:center}
+.pipe .cell .n{font-size:22px;font-weight:800;color:var(--ink)}
+.pipe .cell .t{font-size:12px;color:var(--muted);font-weight:600}
+.pipe .cell.hot{border-color:var(--gold);background:var(--gold-soft)}
+
+.import-zone{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted);background:#fafbfc}
+.import-zone:hover{border-color:var(--petrol)}
+.locked-note{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+
+@media (max-width:860px){
+  .sidebar{width:100%;height:auto;bottom:auto;top:auto;position:fixed;bottom:0;flex-direction:row;padding:0}
+  .sb-brand,.sb-user{display:none}
+  .nav{display:flex;flex:1;padding:6px;gap:2px;overflow-x:auto}
+  .nav button{flex-direction:column;gap:2px;font-size:10.5px;padding:7px 6px;min-width:64px;justify-content:center;text-align:center}
+  .nav button.active::before{display:none}
+  .main{margin-right:0;padding:18px 14px 90px}
+  .form-grid{grid-template-columns:1fr}
+}
+@media print{.sidebar{display:none}.main{margin:0}}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-mark">מ</div>
+      <div>
+        <h1>מנוף שירותים כלכליים</h1>
+      </div>
+    </div>
+    <div class="sub">מערכת CRM — כניסה למשתמשים מורשים בלבד</div>
+    <div class="field"><label class="req">אימייל</label><input type="email" id="loginEmail" placeholder="name@manof4biz.co.il" dir="ltr" style="text-align:left"></div>
+    <div class="field"><label class="req">סיסמה</label><input type="password" id="loginPass" placeholder="••••••" dir="ltr" style="text-align:left"></div>
+    <button class="btn-login" onclick="doLogin()">כניסה למערכת</button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-hint">מערכת פנימית של מנוף שירותים כלכליים · לקבלת גישה יש לפנות להנהלה</div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app">
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="logo-mark">מ</div>
+      <div><b>מנוף CRM</b><span>שירותים כלכליים</span></div>
+    </div>
+    <nav class="nav" id="navMenu"></nav>
+    <div class="sb-user" id="sbUser"></div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+</div>
+
+<div id="toast"></div>
+<div id="modalRoot"></div>
+
+<script>
+/* ================= CORE: users, state, storage ================= */
+/* ==== חיבור Supabase — מדביקים כאן את הפרטים מהפרויקט (Settings → API) ==== */
+const SUPABASE_URL='PASTE_YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY='PASTE_YOUR_SUPABASE_ANON_KEY';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let session=null, tab='dashboard', period='all';
+let charts=[];
+
+function todayISO(){return new Date().toISOString().slice(0,10)}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function fmtMoney(n){return '₪'+(Number(n)||0).toLocaleString('he-IL',{maximumFractionDigits:0})}
+function fmtNum(n){return (Number(n)||0).toLocaleString('he-IL',{maximumFractionDigits:2})}
+function fmtDate(d){if(!d)return '—';const p=d.split('-');return p.length===3?`${p[2]}.${p[1]}.${p[0]}`:d}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function initials(name){const p=(name||'').trim().split(/\s+/);return (p[0]?.[0]||'')+(p[1]?.[0]||'')}
+
+let state={employees:[],clients:[],leads:[],candidates:[],hours:[],payments:[],vacations:[]};
+
+/* ==== שכבת נתונים: Supabase ==== */
+const DATE_FIELDS=['birthDate','startDate','endDate','contractDate','date'];
+const NUM_FIELDS=['salary','bonus','hours','amount','monthlyCost','experience'];
+const FIELD_MAP={
+  employees:{firstName:'first_name',lastName:'last_name',birthDate:'birth_date',startDate:'start_date'},
+  clients:{birthDate:'birth_date',monthlyCost:'monthly_cost',contractDate:'contract_date',contractFile:'contract_file'},
+  leads:{},
+  candidates:{cvFile:'cv_file'},
+  hours:{employeeId:'employee_id',clientId:'client_id'},
+  payments:{clientId:'client_id'},
+  vacations:{employeeId:'employee_id',startDate:'start_date',endDate:'end_date'}
+};
+function toDb(table,obj){
+  const map=FIELD_MAP[table]||{}, out={};
+  for(const k in obj){
+    if(table==='employees'&&(k==='salary'||k==='bonus'))continue; /* נשמר בטבלת שכר נפרדת ומאובטחת */
+    let v=obj[k];
+    if(DATE_FIELDS.includes(k)&&v==='')v=null;
+    out[map[k]||k]=v;
+  }
+  return out;
+}
+function fromDb(table,row){
+  const map=FIELD_MAP[table]||{}, inv={}, out={};
+  for(const k in map)inv[map[k]]=k;
+  for(const k in row){
+    const key=inv[k]||k;
+    let v=row[k];
+    if(NUM_FIELDS.includes(key)&&v!=null)v=Number(v);
+    if(v===null&&DATE_FIELDS.includes(key))v='';
+    out[key]=v;
+  }
+  if(table==='clients'&&!out.team)out.team=[];
+  if(table==='candidates'&&!out.skills)out.skills=[];
+  return out;
+}
+function bg(p){Promise.resolve(p).catch(e=>{console.error(e);toast('שגיאת סנכרון מול השרת: '+(e.message||e),'err');loadAll().then(render)})}
+async function dbInsert(table,obj){
+  const {error}=await sb.from(table).insert(toDb(table,obj));
+  if(error)throw error;
+  if(table==='employees'&&isAdmin()){
+    const {error:e2}=await sb.from('employee_salaries').upsert({employee_id:obj.id,salary:obj.salary||0,bonus:obj.bonus||0});
+    if(e2)throw e2;
+  }
+}
+async function dbUpdate(table,id,obj){
+  const body=toDb(table,obj);
+  if(Object.keys(body).length){
+    const {error}=await sb.from(table).update(body).eq('id',id);
+    if(error)throw error;
+  }
+  if(table==='employees'&&isAdmin()&&(('salary' in obj)||('bonus' in obj))){
+    const {error:e2}=await sb.from('employee_salaries').upsert({employee_id:id,salary:obj.salary||0,bonus:obj.bonus||0});
+    if(e2)throw e2;
+  }
+}
+async function dbDelete(table,id){
+  const {error}=await sb.from(table).delete().eq('id',id);
+  if(error)throw error;
+}
+async function dbBulkInsert(table,arr){
+  if(!arr.length)return;
+  const {error}=await sb.from(table).insert(arr.map(o=>toDb(table,o)));
+  if(error)throw error;
+}
+async function loadAll(){
+  if(can('users','view'))await loadAppUsers();
+  const tables=['employees','clients','leads','candidates','hours','payments','vacations'];
+  await Promise.all(tables.map(async t=>{
+    const {data,error}=await sb.from(t).select('*');
+    state[t]=(error||!data)?[]:data.map(r=>fromDb(t,r));
+  }));
+  if(isAdmin()){
+    const {data}=await sb.from('employee_salaries').select('*');
+    (data||[]).forEach(s=>{const e=state.employees.find(x=>x.id===s.employee_id);if(e){e.salary=Number(s.salary)||0;e.bonus=Number(s.bonus)||0}});
+  }
+}
+let _rtTimer=null;
+function subscribeRealtime(){
+  try{
+    sb.channel('crm-live').on('postgres_changes',{event:'*',schema:'public'},()=>{
+      clearTimeout(_rtTimer);
+      _rtTimer=setTimeout(async()=>{await loadAll();if(!document.querySelector('.modal-back'))render()},500);
+    }).subscribe();
+  }catch(e){console.warn('realtime unavailable',e)}
+}
+function save(){/* הסנכרון מתבצע מול Supabase בכל פעולה */}
+
+/* ================= AUTH & permissions ================= */
+/* ==== מערכת הרשאות ==== */
+const ROLES={
+  'סופר אדמין':{label:'סופר אדמין',desc:'גישה מלאה + ניהול משתמשים',color:'#c9a03a',
+    perms:{dashboard:{view:true,financials:true},employees:{view:true,edit:true,salaries:true},clients:{view:true,edit:true},leads:{view:true,edit:true},candidates:{view:true,edit:true},hours:{view:true,edit:true},payments:{view:true,edit:true},vacations:{view:true,edit:true},users:{view:true,edit:true},backup:true}},
+  'אדמין':{label:'אדמין',desc:'גישה מלאה לנתונים ללא ניהול משתמשים',color:'#1f6f6b',
+    perms:{dashboard:{view:true,financials:true},employees:{view:true,edit:true,salaries:true},clients:{view:true,edit:true},leads:{view:true,edit:true},candidates:{view:true,edit:true},hours:{view:true,edit:true},payments:{view:true,edit:true},vacations:{view:true,edit:true},users:{view:true,edit:false},backup:true}},
+  'מנהל צוות':{label:'מנהל צוות',desc:'רואה הכל חוץ משכר, מנהל לקוחות ושעות',color:'#2b6cb0',
+    perms:{dashboard:{view:true,financials:false},employees:{view:true,edit:false,salaries:false},clients:{view:true,edit:true},leads:{view:true,edit:true},candidates:{view:true,edit:true},hours:{view:true,edit:true},payments:{view:false,edit:false},vacations:{view:true,edit:true},users:{view:false,edit:false},backup:false}},
+  'עובד':{label:'עובד',desc:'צפייה ועריכה בסיסית, ללא נתונים כספיים',color:'#7b8a97',
+    perms:{dashboard:{view:true,financials:false},employees:{view:true,edit:false,salaries:false},clients:{view:true,edit:true},leads:{view:true,edit:true},candidates:{view:true,edit:true},hours:{view:true,edit:true},payments:{view:false,edit:false},vacations:{view:true,edit:false},users:{view:false,edit:false},backup:false}},
+  'צופה':{label:'צופה',desc:'צפייה בלבד, ללא עריכה',color:'#aab4bd',
+    perms:{dashboard:{view:true,financials:false},employees:{view:true,edit:false,salaries:false},clients:{view:true,edit:false},leads:{view:true,edit:false},candidates:{view:true,edit:false},hours:{view:true,edit:false},payments:{view:false,edit:false},vacations:{view:true,edit:false},users:{view:false,edit:false},backup:false}}
+};
+function defaultPerms(role){return JSON.parse(JSON.stringify(ROLES[role]?.perms||ROLES['עובד'].perms))}
+function can(mod,action){
+  if(!session||!session.perms)return false;
+  const m=session.perms[mod];
+  if(m===undefined)return false;
+  if(typeof m==='boolean')return m;
+  return !!m[action||'view'];
+}
+function isAdmin(){return can('employees','salaries')}
+function isSuperAdmin(){return can('users','edit')}
+function roleLabel(r){return ROLES[r]?.label||r}
+function roleColor(r){return ROLES[r]?.color||'#7b8a97'}
+async function doLogin(){
+  const em=document.getElementById('loginEmail').value.trim().toLowerCase();
+  const pw=document.getElementById('loginPass').value;
+  const errEl=document.getElementById('loginErr');
+  if(SUPABASE_URL.startsWith('PASTE')){errEl.textContent='המערכת טרם חוברה ל-Supabase — יש למלא את פרטי החיבור בראש הקובץ.';return}
+  errEl.textContent='מתחבר…';
+  const {data,error}=await sb.auth.signInWithPassword({email:em,password:pw});
+  if(error||!data?.user){errEl.textContent='אימייל או סיסמה שגויים. הכניסה למשתמשים מוגדרים בלבד.';return}
+  errEl.textContent='';
+  await initSession(em);
+}
+async function initSession(em){
+  const {data:u}=await sb.from('app_users').select('*').eq('email',em).maybeSingle();
+  if(!u){document.getElementById('loginErr').textContent='המשתמש אינו מוגדר במערכת. יש לפנות לאדמין.';return}
+  if(u.status==='מושבת'){document.getElementById('loginErr').textContent='החשבון מושבת. יש לפנות להנהלה.';return}
+  const role=u.role||'עובד';
+  const perms=u.permissions?JSON.parse(u.permissions):defaultPerms(role);
+  session={email:em,name:u.name||em.split('@')[0],role,perms,userId:u.id};
+  await enterApp();
+}
+async function logout(){try{await sb.auth.signOut()}catch(e){}location.reload()}
+async function enterApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('main').innerHTML='<div class="empty-state" style="padding-top:80px"><div class="big">☁️</div>טוען נתונים מהענן…</div>';
+  await loadAll();
+  renderNav(); go('dashboard');
+  subscribeRealtime();
+}
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+
+/* ================= NAV / ROUTER ================= */
+const TABS=[
+  {id:'dashboard',label:'דשבורד',ico:'📊',perm:'dashboard'},
+  {id:'employees',label:'עובדים',ico:'👥',perm:'employees'},
+  {id:'clients',label:'לקוחות',ico:'🤝',perm:'clients'},
+  {id:'leads',label:'לידים',ico:'🎯',perm:'leads'},
+  {id:'candidates',label:'מאגר קו"ח',ico:'📄',perm:'candidates'},
+  {id:'hours',label:'שעות',ico:'⏱️',perm:'hours'},
+  {id:'payments',label:'תשלומים',ico:'💳',perm:'payments'},
+  {id:'vacations',label:'חופשות',ico:'🌴',perm:'vacations'},
+  {id:'users',label:'משתמשים',ico:'⚙️',perm:'users'}
+];
+function renderNav(){
+  document.getElementById('navMenu').innerHTML=TABS.filter(t=>can(t.perm,'view'))
+    .map(t=>`<button id="nav-${t.id}" onclick="go('${t.id}')"><span class="ico">${t.ico}</span>${t.label}</button>`).join('')
+    +(can('backup')?`<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08)">
+      <button onclick="exportBackupExcel()"><span class="ico">🗂️</span>גיבוי לאקסל</button>
+      <button onclick="openBackupModal()"><span class="ico">♻️</span>גיבוי / שחזור</button>
+      <div id="lastBackupNote" style="font-size:10.5px;color:#8fa0ad;padding:4px 12px">${lastBackupText()}</div>
+    </div>`:'');
+  document.getElementById('sbUser').innerHTML=`
+    <div class="avatar">${esc(initials(session.name))}</div>
+    <div><div class="nm">${esc(session.name)}</div><div class="rl">${esc(roleLabel(session.role))}</div></div>
+    <button onclick="logout()">יציאה</button>`;
+}
+function go(t){
+  tab=t;
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  const nb=document.getElementById('nav-'+t); if(nb)nb.classList.add('active');
+  render();
+  window.scrollTo(0,0);
+}
+function render(){
+  charts.forEach(c=>c.destroy()); charts=[];
+  const fn={dashboard:renderDashboard,employees:renderEmployees,clients:renderClients,leads:renderLeads,candidates:renderCandidates,hours:renderHours,payments:renderPayments,vacations:renderVacationsPage,users:renderUsers}[tab];
+  const tabObj=TABS.find(t=>t.id===tab);if(tabObj&&!can(tabObj.perm,'view')){go('dashboard');return}
+  fn();
+}
+
+/* ================= HELPERS ================= */
+function toast(msg,cls){const t=document.getElementById('toast');t.textContent=msg;t.className=cls||'';t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2600)}
+function empName(id){const e=state.employees.find(x=>x.id===id);return e?e.firstName+' '+e.lastName:'—'}
+function clientName(id){const c=state.clients.find(x=>x.id===id);return c?c.name:'—'}
+function monthsList(){
+  const set=new Set();
+  state.hours.forEach(h=>set.add(h.date.slice(0,7)));
+  state.payments.forEach(p=>set.add(p.date.slice(0,7)));
+  return [...set].sort().reverse();
+}
+function monthLabel(m){const [y,mm]=m.split('-');const names=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];return names[+mm-1]+' '+y}
+function inPeriod(dateStr){return period==='all'||dateStr.slice(0,7)===period}
+function prevMonth(m){const [y,mm]=m.split('-').map(Number);const d=new Date(y,mm-2,1);return d.toISOString().slice(0,7)}
+function daysToBirthday(bd){
+  if(!bd)return null;
+  const now=new Date(); now.setHours(0,0,0,0);
+  const [,mm,dd]=bd.split('-').map(Number);
+  let next=new Date(now.getFullYear(),mm-1,dd);
+  if(next<now)next=new Date(now.getFullYear()+1,mm-1,dd);
+  return Math.round((next-now)/86400000);
+}
+function bdayBadge(bd){
+  const d=daysToBirthday(bd);
+  if(d===null)return '<span style="color:var(--muted)">—</span>';
+  if(d===0)return '<span class="badge b-gold">🎂 היום!</span>';
+  if(d<=7)return `<span class="badge b-gold">בעוד ${d} ימים</span>`;
+  return `<span style="color:var(--muted);font-size:12.5px">${fmtDate(bd).slice(0,5)} · בעוד ${d} ימים</span>`;
+}
+/* --- vacations helpers --- */
+const VAC_TYPES=['חופשה','מחלה','מילואים','אחר'];
+function vacBadgeCls(t){return {'חופשה':'b-blue','מחלה':'b-yellow','מילואים':'b-purple','אחר':'b-gray'}[t]||'b-gray'}
+function vacDays(v){const a=new Date(v.startDate),b=new Date(v.endDate);return Math.round((b-a)/86400000)+1}
+function vacationToday(empId,dateStr){
+  const d=dateStr||todayISO();
+  return state.vacations.find(v=>v.employeeId===empId&&v.startDate<=d&&v.endDate>=d)||null;
+}
+function upcomingVacations(days){
+  const now=new Date(todayISO()), lim=new Date(now); lim.setDate(lim.getDate()+days);
+  const limS=lim.toISOString().slice(0,10), nowS=todayISO();
+  return state.vacations.filter(v=>v.endDate>=nowS&&v.startDate<=limS)
+    .sort((a,b)=>a.startDate.localeCompare(b.startDate));
+}
+function readFileInput(input){
+  return new Promise(res=>{
+    const f=input?.files?.[0];
+    if(!f){res(undefined);return}
+    if(f.size>2.5*1024*1024){toast('קובץ גדול מדי (מקסימום 2.5MB בשלב הדמו)','err');res(undefined);return}
+    const r=new FileReader();
+    r.onload=()=>res({name:f.name,type:f.type,data:r.result});
+    r.readAsDataURL(f);
+  });
+}
+function downloadFile(json){
+  const f=JSON.parse(decodeURIComponent(json));
+  const a=document.createElement('a');a.href=f.data;a.download=f.name;a.click();
+}
+function fileChip(f){
+  if(!f)return '';
+  return `<button class="file-chip" onclick='downloadFile("${encodeURIComponent(JSON.stringify(f))}")'>📎 ${esc(f.name)}</button>`;
+}
+
+/* ================= MODAL ================= */
+let modalSave=null;
+function openModal(title,bodyHTML,onSave,opts={}){
+  modalSave=onSave;
+  document.getElementById('modalRoot').innerHTML=`
+  <div class="modal-back" onclick="if(event.target===this)closeModal()">
+    <div class="modal ${opts.wide?'wide':''}">
+      <div class="modal-head"><h3>${title}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">${bodyHTML}</div>
+      <div class="modal-foot">
+        ${onSave?`<button class="btn btn-primary" onclick="modalSaveClick()">${opts.saveLabel||'שמירה'}</button>`:''}
+        <button class="btn btn-ghost" onclick="closeModal()">${onSave?'ביטול':'סגירה'}</button>
+        ${opts.extraFoot||''}
+      </div>
+    </div>
+  </div>`;
+}
+async function modalSaveClick(){if(modalSave){const ok=await modalSave();if(ok!==false){closeModal();save();render()}}}
+function closeModal(){document.getElementById('modalRoot').innerHTML='';modalSave=null}
+function val(id){return document.getElementById(id)?.value?.trim()??''}
+function numVal(id){const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?0:v}
+function confirmDelete(msg,fn){
+  openModal('אישור מחיקה',`<p style="font-size:15px">${msg}</p><p style="color:var(--muted);font-size:13px;margin-top:8px">פעולה זו אינה ניתנת לשחזור.</p>`,null,{extraFoot:`<button class="btn btn-danger" onclick="(${fn})();closeModal();save();render()">כן, למחוק</button>`});
+}
+
+/* ================= DASHBOARD ================= */
+function periodStats(p){
+  const inP=d=>p==='all'||d.slice(0,7)===p;
+  const hrs=state.hours.filter(h=>inP(h.date));
+  const pays=state.payments.filter(x=>inP(x.date));
+  const totH=hrs.reduce((s,h)=>s+h.hours,0);
+  const billH=hrs.filter(h=>h.billable).reduce((s,h)=>s+h.hours,0);
+  return {
+    hours:totH, billable:billH,
+    paid:pays.filter(x=>x.status==='שולם').reduce((s,x)=>s+x.amount,0),
+    pending:pays.filter(x=>x.status==='ממתין').reduce((s,x)=>s+x.amount,0),
+    late:pays.filter(x=>x.status==='באיחור').reduce((s,x)=>s+x.amount,0)
+  };
+}
+function deltaHTML(cur,prev,isMoney){
+  if(period==='all')return '';
+  if(prev===0&&cur===0)return '<div class="delta flat">ללא שינוי</div>';
+  if(prev===0)return '<div class="delta up">▲ חדש החודש</div>';
+  const pct=Math.round((cur-prev)/prev*100);
+  if(pct===0)return '<div class="delta flat">ללא שינוי מהחודש הקודם</div>';
+  const up=pct>0;
+  return `<div class="delta ${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(pct)}% מהחודש הקודם</div>`;
+}
+function renderDashboard(){
+  const admin=isAdmin();
+  const cur=periodStats(period);
+  const prev=period==='all'?null:periodStats(prevMonth(period));
+  const months=monthsList();
+
+  // birthdays
+  const people=[...state.employees.filter(e=>e.status==='פעיל').map(e=>({name:e.firstName+' '+e.lastName,bd:e.birthDate,kind:'עובד'})),
+                ...state.clients.filter(c=>c.birthDate).map(c=>({name:c.name,bd:c.birthDate,kind:'לקוח'}))];
+  const todayB=people.filter(p=>daysToBirthday(p.bd)===0);
+  const weekB=people.filter(p=>{const d=daysToBirthday(p.bd);return d!==null&&d>0&&d<=7}).sort((a,b)=>daysToBirthday(a.bd)-daysToBirthday(b.bd));
+
+  // backup reminder (admin)
+  let bkBanner='';
+  if(can('backup')&&backupOverdue()){
+    bkBanner=`<div class="bday-banner" style="background:linear-gradient(90deg,var(--red-bg),#fff);border-color:#eec4be"><span class="big">💾</span><div>
+      ${localStorage.getItem(BK_KEY)?'עבר יותר משבוע מהגיבוי האחרון':'טרם בוצע גיבוי לנתוני המערכת'} — מומלץ לשמור עותק חיצוני מדי שבוע בנוסף לגיבוי האוטומטי של Supabase.
+      <div class="bday-week"><button class="btn btn-gold btn-sm" onclick="exportBackupExcel()">🗂️ גיבוי לאקסל עכשיו</button> <button class="btn btn-ghost btn-sm" onclick="openBackupModal()">אפשרויות נוספות</button></div>
+    </div></div>`;
+  }
+
+  // vacations banner
+  let vacBanner='';
+  const upVacs=upcomingVacations(7);
+  if(upVacs.length){
+    const t=todayISO();
+    const nowV=upVacs.filter(v=>v.startDate<=t);
+    const soonV=upVacs.filter(v=>v.startDate>t);
+    vacBanner=`<div class="bday-banner" style="background:linear-gradient(90deg,var(--blue-bg),#fff);border-color:#bcd3ea"><span class="big">🌴</span><div>
+      ${nowV.length?`בהיעדרות כעת: <b>${nowV.map(v=>esc(empName(v.employeeId))+' ('+v.type+', עד '+fmtDate(v.endDate)+')').join(' · ')}</b>`:'היעדרויות מתוכננות בשבוע הקרוב:'}
+      ${soonV.length?`<div class="bday-week">בקרוב: ${soonV.map(v=>esc(empName(v.employeeId))+' — '+v.type+' מ-'+fmtDate(v.startDate)+' עד '+fmtDate(v.endDate)).join(' · ')}</div>`:''}
+    </div></div>`;
+  }
+
+  let bday='';
+  if(todayB.length||weekB.length){
+    bday=`<div class="bday-banner"><span class="big">🎂</span><div>
+      ${todayB.length?`יום הולדת היום: <b>${todayB.map(p=>esc(p.name)+' ('+p.kind+')').join(', ')}</b> — שווה להרים טלפון!`:'ימי הולדת בשבוע הקרוב:'}
+      ${weekB.length?`<div class="bday-week">בשבוע הקרוב: ${weekB.map(p=>esc(p.name)+' — בעוד '+daysToBirthday(p.bd)+' ימים').join(' · ')}</div>`:''}
+    </div></div>`;
+  }
+
+  const statCards = admin ? `
+    <div class="stat gold-top"><div class="lbl">שעות בתקופה</div><div class="val">${fmtNum(cur.hours)}</div>${prev?deltaHTML(cur.hours,prev.hours):'<div class="note">כל התקופות</div>'}</div>
+    <div class="stat"><div class="lbl">הכנסות שהתקבלו</div><div class="val">${fmtMoney(cur.paid)}</div>${prev?deltaHTML(cur.paid,prev.paid,true):'<div class="note">תשלומים בסטטוס "שולם"</div>'}</div>
+    <div class="stat"><div class="lbl">ממתין לגבייה</div><div class="val">${fmtMoney(cur.pending+cur.late)}</div><div class="note">${cur.late?`מתוכם ${fmtMoney(cur.late)} באיחור`:'ללא חובות באיחור'}</div></div>
+    <div class="stat"><div class="lbl">שעות לחיוב</div><div class="val">${fmtNum(cur.billable)}</div><div class="note">${cur.hours?Math.round(cur.billable/cur.hours*100):0}% מסך השעות</div></div>
+  ` : `
+    <div class="stat gold-top"><div class="lbl">שעות בתקופה</div><div class="val">${fmtNum(cur.hours)}</div>${prev?deltaHTML(cur.hours,prev.hours):'<div class="note">כל התקופות</div>'}</div>
+    <div class="stat"><div class="lbl">שעות לחיוב</div><div class="val">${fmtNum(cur.billable)}</div><div class="note">${cur.hours?Math.round(cur.billable/cur.hours*100):0}% מסך השעות</div></div>
+    <div class="stat"><div class="lbl">לקוחות פעילים</div><div class="val">${state.clients.filter(c=>c.status==='פעיל').length}</div></div>
+    <div class="stat"><div class="lbl">לידים פתוחים</div><div class="val">${state.leads.filter(l=>!['נסגר','אבוד'].includes(l.status)).length}</div></div>
+  `;
+
+  document.getElementById('main').innerHTML=`
+    <div class="page-head">
+      <div><h2>שלום, ${esc(session.name)} 👋</h2><div class="sub">${admin?'תמונת מצב כספית ותפעולית':'תמונת מצב תפעולית'} · ${period==='all'?'כל הזמן':monthLabel(period)}</div></div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <label style="margin:0">תקופה</label>
+        <select onchange="period=this.value;render()" style="width:auto">
+          <option value="all" ${period==='all'?'selected':''}>כל הזמן</option>
+          ${months.map(m=>`<option value="${m}" ${period===m?'selected':''}>${monthLabel(m)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    ${bkBanner}
+    ${bday}
+    ${vacBanner}
+    <div class="stats">${statCards}</div>
+    <div class="quick-actions">
+      <button class="btn btn-gold" onclick="go('clients');setTimeout(openClientForm,50)">+ לקוח חדש</button>
+      <button class="btn btn-ghost" onclick="go('leads');setTimeout(openLeadForm,50)">+ ליד</button>
+      <button class="btn btn-ghost" onclick="go('candidates');setTimeout(openCandidateForm,50)">+ מועמד</button>
+      ${admin?`<button class="btn btn-ghost" onclick="go('employees');setTimeout(openEmployeeForm,50)">+ עובד</button>`:''}
+      <button class="btn btn-ghost" onclick="go('hours');setTimeout(openHourForm,50)">+ רישום שעות</button>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card"><h3>מגמת שעות${admin?' והכנסות':''} לאורך זמן</h3><div class="chart-box"><canvas id="chTrend"></canvas></div></div>
+      <div class="chart-card"><h3>שעות לפי עובד</h3><div class="chart-box"><canvas id="chEmp"></canvas></div></div>
+      ${admin?`<div class="chart-card"><h3>התפלגות תשלומים לפי סטטוס</h3><div class="chart-box"><canvas id="chPay"></canvas></div></div>`:''}
+      <div class="chart-card"><h3>שעות לפי לקוח</h3><div class="chart-box"><canvas id="chClient"></canvas></div></div>
+    </div>`;
+  drawDashboardCharts(admin);
+}
+function drawDashboardCharts(admin){
+  const INK='#152532',GOLD='#c9a03a',PETROL='#1f6f6b';
+  Chart.defaults.font.family="'Heebo',sans-serif";
+  // trend — always across all months
+  const months=monthsList().slice().reverse();
+  const hByM=months.map(m=>state.hours.filter(h=>h.date.startsWith(m)).reduce((s,h)=>s+h.hours,0));
+  const payByM=months.map(m=>state.payments.filter(p=>p.date.startsWith(m)&&p.status==='שולם').reduce((s,p)=>s+p.amount,0));
+  const dsets=[{type:'bar',label:'שעות',data:hByM,backgroundColor:'#1f6f6bcc',yAxisID:'y',borderRadius:5}];
+  if(admin)dsets.push({type:'line',label:'הכנסות (₪)',data:payByM,borderColor:GOLD,backgroundColor:GOLD,yAxisID:'y1',tension:.3,pointRadius:4});
+  charts.push(new Chart(document.getElementById('chTrend'),{data:{labels:months.map(monthLabel),datasets:dsets},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{position:'right',title:{display:true,text:'שעות'}},...(admin?{y1:{position:'left',grid:{drawOnChartArea:false},ticks:{callback:v=>'₪'+(v/1000)+'K'}}}:{})} ,plugins:{legend:{rtl:true,labels:{usePointStyle:true}}}}}));
+  // by employee — respects period
+  const emps=state.employees.filter(e=>e.status==='פעיל');
+  const eH=emps.map(e=>state.hours.filter(h=>h.employeeId===e.id&&inPeriod(h.date)).reduce((s,h)=>s+h.hours,0));
+  charts.push(new Chart(document.getElementById('chEmp'),{type:'bar',data:{labels:emps.map(e=>e.firstName+' '+e.lastName),datasets:[{data:eH,backgroundColor:[INK,PETROL,GOLD,'#2b6cb0','#6b46c1'],borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}}));
+  // payments pie
+  if(admin){
+    const s=periodStats(period);
+    charts.push(new Chart(document.getElementById('chPay'),{type:'doughnut',data:{labels:['שולם','ממתין','באיחור'],datasets:[{data:[s.paid,s.pending,s.late],backgroundColor:['#1e8e5a','#e0b13c','#c0392b']}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{rtl:true,position:'bottom',labels:{usePointStyle:true}},tooltip:{callbacks:{label:c=>c.label+': '+fmtMoney(c.parsed)}}}}}));
+  }
+  // by client — horizontal, sorted desc
+  const cl=state.clients.map(c=>({n:c.name,h:state.hours.filter(h=>h.clientId===c.id&&inPeriod(h.date)).reduce((s,h)=>s+h.hours,0)})).filter(x=>x.h>0).sort((a,b)=>b.h-a.h);
+  charts.push(new Chart(document.getElementById('chClient'),{type:'bar',data:{labels:cl.map(x=>x.n),datasets:[{data:cl.map(x=>x.h),backgroundColor:PETROL,borderRadius:6}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}}));
+}
+
+/* ================= EMPLOYEES ================= */
+let empSearch='',empFilter='all';
+function renderEmployees(){
+  const admin=isAdmin();
+  const q=empSearch.toLowerCase();
+  const list=state.employees.filter(e=>{
+    const t=(e.firstName+' '+e.lastName+' '+e.email+' '+e.role).toLowerCase();
+    return (!q||t.includes(q))&&(empFilter==='all'||e.status===empFilter);
+  });
+  document.getElementById('main').innerHTML=`
+    <div class="page-head">
+      <div><h2>עובדים</h2><div class="sub">${state.employees.filter(e=>e.status==='פעיל').length} עובדים פעילים ${admin?'':'· נתוני שכר זמינים להנהלה בלבד'}</div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-ghost" onclick="openVacationForm()">🌴 סימון חופשה</button>
+        ${can('employees','edit')?`<button class="btn btn-primary" onclick="openEmployeeForm()">+ הוספת עובד</button>`:`<span class="locked-note">🔒 עריכת עובדים — בהתאם להרשאות</span>`}
+      </div>
+    </div>
+    <div class="toolbar">
+      <input type="search" placeholder="חיפוש לפי שם, אימייל או תפקיד…" value="${esc(empSearch)}" oninput="empSearch=this.value;render()">
+      <select onchange="empFilter=this.value;render()">
+        <option value="all" ${empFilter==='all'?'selected':''}>כל הסטטוסים</option>
+        <option value="פעיל" ${empFilter==='פעיל'?'selected':''}>פעיל</option>
+        <option value="לא פעיל" ${empFilter==='לא פעיל'?'selected':''}>לא פעיל</option>
+      </select>
+    </div>
+    <div class="card tbl-wrap"><table>
+      <thead><tr><th>שם</th><th>תפקיד</th><th>טלפון</th>${admin?'<th>משכורת חודשית</th>':''}<th>יום הולדת</th><th>סטטוס</th><th></th></tr></thead>
+      <tbody>${list.length?list.map(e=>`
+        <tr class="clickable" onclick="openEmployeeCard('${e.id}')">
+          <td><div style="display:flex;align-items:center;gap:10px"><span class="avatar">${esc(initials(e.firstName+' '+e.lastName))}</span><b>${esc(e.firstName)} ${esc(e.lastName)}</b></div></td>
+          <td>${esc(e.role)}</td><td dir="ltr" style="text-align:right">${esc(e.phone)}</td>
+          ${admin?`<td><b>${fmtMoney(e.salary)}</b>${e.bonus?`<div style="font-size:11.5px;color:var(--muted)">+ בונוס ${fmtMoney(e.bonus)}</div>`:''}</td>`:''}
+          <td>${bdayBadge(e.birthDate)}</td>
+          <td>${(()=>{const v=vacationToday(e.id);return v?`<span class="badge ${vacBadgeCls(v.type)}" title="עד ${fmtDate(v.endDate)}">🌴 ב${v.type==='אחר'?'היעדרות':v.type} עד ${fmtDate(v.endDate).slice(0,5)}</span>`:`<span class="badge ${e.status==='פעיל'?'b-green':'b-gray'}">${e.status}</span>`})()}</td>
+          <td onclick="event.stopPropagation()">${admin?`<button class="icon-btn" title="עריכה" onclick="openEmployeeForm('${e.id}')">✏️</button><button class="icon-btn" title="מחיקה" onclick="delEmployee('${e.id}')">🗑️</button>`:''}</td>
+        </tr>`).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="big">👥</div>לא נמצאו עובדים תואמים</div></td></tr>`}
+      </tbody></table></div>`;
+}
+function openEmployeeForm(id){
+  if(!can('employees','edit')){toast('אין לך הרשאה לערוך עובדים','err');return}
+  const e=state.employees.find(x=>x.id===id)||{};
+  openModal(id?'עריכת עובד':'הוספת עובד',`
+    <div class="form-grid">
+      <div><label class="req">שם פרטי</label><input id="f_fn" value="${esc(e.firstName||'')}"></div>
+      <div><label class="req">שם משפחה</label><input id="f_ln" value="${esc(e.lastName||'')}"></div>
+      <div><label class="req">אימייל</label><input id="f_em" type="email" dir="ltr" value="${esc(e.email||'')}"></div>
+      <div><label class="req">טלפון</label><input id="f_ph" dir="ltr" value="${esc(e.phone||'')}"></div>
+      <div><label class="req">תאריך לידה</label><input id="f_bd" type="date" value="${e.birthDate||''}"></div>
+      <div><label class="req">תפקיד</label><input id="f_rl" value="${esc(e.role||'')}"></div>
+      <div><label class="req">משכורת חודשית (₪)</label><input id="f_sal" type="number" min="0" value="${e.salary??''}"></div>
+      <div><label>בונוס משתנה (₪)</label><input id="f_bon" type="number" min="0" value="${e.bonus??''}"></div>
+      <div><label class="req">תאריך התחלה</label><input id="f_sd" type="date" value="${e.startDate||''}"></div>
+      <div><label class="req">סטטוס</label><select id="f_st"><option ${e.status!=='לא פעיל'?'selected':''}>פעיל</option><option ${e.status==='לא פעיל'?'selected':''}>לא פעיל</option></select></div>
+      <div class="full"><label class="req">כתובת מלאה</label><input id="f_ad" value="${esc(e.address||'')}"></div>
+    </div>`,
+    ()=>{
+      const req=['f_fn','f_ln','f_em','f_ph','f_bd','f_rl','f_sd','f_ad'];
+      if(req.some(x=>!val(x))||!val('f_sal')){toast('יש למלא את כל שדות החובה','err');return false}
+      if(!/^\S+@\S+\.\S+$/.test(val('f_em'))){toast('כתובת אימייל לא תקינה','err');return false}
+      const obj={firstName:val('f_fn'),lastName:val('f_ln'),email:val('f_em'),phone:val('f_ph'),birthDate:val('f_bd'),role:val('f_rl'),salary:numVal('f_sal'),bonus:numVal('f_bon'),startDate:val('f_sd'),address:val('f_ad'),status:val('f_st')};
+      if(id){Object.assign(state.employees.find(x=>x.id===id),obj);bg(dbUpdate('employees',id,obj))}
+      else{const nid=uid();state.employees.push({id:nid,...obj});bg(dbInsert('employees',{id:nid,...obj}))}
+      toast(id?'העובד עודכן':'העובד נוסף בהצלחה');
+    });
+}
+function delEmployee(id){
+  if(!isAdmin())return;
+  const e=state.employees.find(x=>x.id===id);
+  const hrs=state.hours.filter(h=>h.employeeId===id).length;
+  confirmDelete(`למחוק את <b>${esc(e.firstName+' '+e.lastName)}</b>?${hrs?` יש לעובד ${hrs} רישומי שעות שיישארו במערכת.`:''}`,
+    `()=>{delEmployeeDo('${id}')}`);
+}
+function delEmployeeDo(id){
+  state.employees=state.employees.filter(x=>x.id!==id);
+  const affected=state.clients.filter(c=>c.team.includes(id));
+  affected.forEach(c=>c.team=c.team.filter(t=>t!==id));
+  state.hours.forEach(h=>{if(h.employeeId===id)h.employeeId=null});
+  state.vacations=state.vacations.filter(v=>v.employeeId!==id);
+  bg((async()=>{
+    for(const cl of affected)await dbUpdate('clients',cl.id,{team:cl.team});
+    await dbDelete('employees',id);
+  })());
+}
+function openEmployeeCard(id){
+  const e=state.employees.find(x=>x.id===id); if(!e)return;
+  const admin=isAdmin();
+  const hrs=state.hours.filter(h=>h.employeeId===id);
+  const tot=hrs.reduce((s,h)=>s+h.hours,0);
+  const myClients=state.clients.filter(c=>c.team.includes(id));
+  openModal(`${esc(e.firstName)} ${esc(e.lastName)} · ${esc(e.role)}`,`
+    <div class="detail-rows">
+      <div class="row"><span>אימייל</span><b dir="ltr">${esc(e.email)}</b></div>
+      <div class="row"><span>טלפון</span><b dir="ltr">${esc(e.phone)}</b></div>
+      <div class="row"><span>כתובת</span><b>${esc(e.address)}</b></div>
+      <div class="row"><span>תאריך לידה</span><b>${fmtDate(e.birthDate)}</b></div>
+      <div class="row"><span>תאריך התחלה</span><b>${fmtDate(e.startDate)}</b></div>
+      <div class="row"><span>סטטוס</span><span class="badge ${e.status==='פעיל'?'b-green':'b-gray'}">${e.status}</span></div>
+    </div>
+    ${admin?`<div class="section-title">פירוט שכר</div>
+    <div class="detail-rows">
+      <div class="row"><span>משכורת חודשית</span><b>${fmtMoney(e.salary)}</b></div>
+      <div class="row"><span>בונוס משתנה</span><b>${e.bonus?fmtMoney(e.bonus):'—'}</b></div>
+    </div>`:''}
+    <div class="section-title">פעילות</div>
+    <div class="detail-rows">
+      <div class="row"><span>סך שעות מצטבר</span><b>${fmtNum(tot)} שעות (${hrs.length} רישומים)</b></div>
+      <div class="row"><span>לקוחות מטופלים (${myClients.length})</span><b>${myClients.length?myClients.map(c=>esc(c.name)).join(', '):'—'}</b></div>
+    </div>
+    <div class="section-title">חופשות והיעדרויות</div>
+    ${(()=>{
+      const vacs=state.vacations.filter(v=>v.employeeId===id).sort((a,b)=>b.startDate.localeCompare(a.startDate));
+      const yearS=todayISO().slice(0,4);
+      const yearDays=vacs.filter(v=>v.type==='חופשה'&&v.startDate.slice(0,4)===yearS).reduce((s,v)=>s+vacDays(v),0);
+      if(!vacs.length)return '<p style="font-size:13px;color:var(--muted)">לא סומנו חופשות. אפשר להוסיף בכפתור למטה.</p>';
+      return `<div class="detail-rows">
+        <div class="row"><span>ימי חופשה השנה</span><b>${yearDays} ימים</b></div>
+        ${vacs.slice(0,6).map(v=>`<div class="row">
+          <span><span class="badge ${vacBadgeCls(v.type)}">${v.type}</span> ${v.notes?'<span style="font-size:12px"> · '+esc(v.notes)+'</span>':''}</span>
+          <b>${fmtDate(v.startDate)} – ${fmtDate(v.endDate)} (${vacDays(v)} ימים) ${isAdmin()?`<button class="icon-btn" style="padding:2px 5px" title="מחיקה" onclick="delVacation('${v.id}','${id}')">🗑️</button>`:''}</b>
+        </div>`).join('')}
+        ${vacs.length>6?`<div class="row"><span style="color:var(--muted)">…ועוד ${vacs.length-6} רישומים</span><b></b></div>`:''}
+      </div>`;
+    })()}`,null,
+    {extraFoot:`<button class="btn btn-ghost" onclick="closeModal();openVacationForm('${id}')">🌴 סימון חופשה</button>`+(can('employees','edit')?`<button class="btn btn-ghost" onclick="closeModal();openEmployeeForm('${id}')">✏️ עריכה</button>`:'')});
+}
+
+/* --- vacations --- */
+function openVacationForm(empId){
+  const t=todayISO();
+  openModal('סימון חופשה / היעדרות',`
+    <div class="form-grid">
+      <div class="full"><label class="req">עובד</label><select id="f_vemp">${state.employees.filter(e=>e.status==='פעיל').map(e=>`<option value="${e.id}" ${empId===e.id?'selected':''}>${esc(e.firstName)} ${esc(e.lastName)}</option>`).join('')}</select></div>
+      <div><label class="req">סוג היעדרות</label><select id="f_vtype">${VAC_TYPES.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      <div></div>
+      <div><label class="req">מתאריך</label><input id="f_vfrom" type="date" value="${t}"></div>
+      <div><label class="req">עד תאריך (כולל)</label><input id="f_vto" type="date" value="${t}"></div>
+      <div class="full"><label>הערות</label><input id="f_vnotes" placeholder="למשל: חופשה משפחתית, זמין בטלפון לדחוף"></div>
+      <div class="full" id="f_vsummary" style="font-size:13px;color:var(--muted)"></div>
+    </div>`,
+    ()=>{
+      const from=val('f_vfrom'),to=val('f_vto');
+      if(!from||!to){toast('יש להזין תאריך התחלה וסיום','err');return false}
+      if(to<from){toast('תאריך הסיום קודם לתאריך ההתחלה','err');return false}
+      const eId=val('f_vemp');
+      const overlap=state.vacations.find(v=>v.employeeId===eId&&v.startDate<=to&&v.endDate>=from);
+      if(overlap){toast(`חופפת להיעדרות קיימת (${fmtDate(overlap.startDate)}–${fmtDate(overlap.endDate)})`,'err');return false}
+      const nid=uid();
+      const rec={id:nid,employeeId:eId,type:val('f_vtype'),startDate:from,endDate:to,notes:val('f_vnotes')};
+      state.vacations.push(rec);bg(dbInsert('vacations',rec));
+      toast('ההיעדרות נרשמה: '+empName(eId)+', '+fmtDate(from)+'–'+fmtDate(to));
+    });
+  // live day counter
+  const upd=()=>{
+    const f=val('f_vfrom'),tt=val('f_vto');
+    const el=document.getElementById('f_vsummary');
+    if(f&&tt&&tt>=f){const d=Math.round((new Date(tt)-new Date(f))/86400000)+1;el.textContent=`סה"כ ${d} ימים (כולל שני הקצוות)`}
+    else el.textContent='';
+  };
+  document.getElementById('f_vfrom').addEventListener('change',upd);
+  document.getElementById('f_vto').addEventListener('change',upd);
+  upd();
+}
+function delVacation(vid,empId){
+  if(!can('vacations','edit')){toast('אין לך הרשאה למחוק היעדרויות','err');return}
+  state.vacations=state.vacations.filter(v=>v.id!==vid);
+  bg(dbDelete('vacations',vid));
+  save();closeModal();render();if(empId)openEmployeeCard(empId);
+  toast('ההיעדרות נמחקה');
+}
+
+/* ================= CLIENTS ================= */
+let cliSearch='',cliEmpFilter='all',cliStFilter='all';
+function renderClients(){
+  const admin=isAdmin();
+  const q=cliSearch.toLowerCase();
+  const list=state.clients.filter(c=>{
+    const t=(c.name+' '+(c.company||'')+' '+c.email).toLowerCase();
+    return (!q||t.includes(q))&&(cliEmpFilter==='all'||c.team.includes(cliEmpFilter))&&(cliStFilter==='all'||c.status===cliStFilter);
+  });
+  const stBadge=s=>s==='פעיל'?'b-green':s==='ממתין'?'b-yellow':'b-gray';
+  document.getElementById('main').innerHTML=`
+    <div class="page-head">
+      <div><h2>לקוחות</h2><div class="sub">${state.clients.filter(c=>c.status==='פעיל').length} לקוחות פעילים מתוך ${state.clients.length}</div></div>
+      <button class="btn btn-primary" onclick="openClientForm()">+ הוספת לקוח</button>
+    </div>
+    <div class="toolbar">
+      <input type="search" placeholder="חיפוש לפי שם, חברה או אימייל…" value="${esc(cliSearch)}" oninput="cliSearch=this.value;render()">
+      <select onchange="cliEmpFilter=this.value;render()">
+        <option value="all">כל העובדים המטפלים</option>
+        ${state.employees.map(e=>`<option value="${e.id}" ${cliEmpFilter===e.id?'selected':''}>${esc(e.firstName)} ${esc(e.lastName)}</option>`).join('')}
+      </select>
+      <select onchange="cliStFilter=this.value;render()">
+        <option value="all">כל הסטטוסים</option>
+        ${['פעיל','ממתין','לא פעיל'].map(s=>`<option ${cliStFilter===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card tbl-wrap"><table>
+      <thead><tr><th>לקוח</th><th>חברה</th><th>צוות מטפל</th><th>חוזה</th><th>יום הולדת</th><th>סטטוס</th><th></th></tr></thead>
+      <tbody>${list.length?list.map(c=>`
+        <tr class="clickable" onclick="openClientCard('${c.id}')">
+          <td><b>${esc(c.name)}</b></td>
+          <td>${esc(c.company||'—')}</td>
+          <td><div class="avatars">${c.team.map(t=>`<span class="avatar sm" title="${esc(empName(t))}">${esc(initials(empName(t)))}</span>`).join('')||'—'}</div></td>
+          <td>${c.contractFile||c.contractDate?'<span class="badge b-blue">✓ חתום</span>':'<span class="badge b-gray">ללא</span>'}</td>
+          <td>${bdayBadge(c.birthDate)}</td>
+          <td><span class="badge ${stBadge(c.status)}">${c.status}</span></td>
+          <td onclick="event.stopPropagation()"><button class="icon-btn" onclick="openClientForm('${c.id}')">✏️</button><button class="icon-btn" onclick="delClient('${c.id}')">🗑️</button></td>
+        </tr>`).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="big">🤝</div>לא נמצאו לקוחות תואמים — אפשר להוסיף לקוח חדש למעלה</div></td></tr>`}
+      </tbody></table></div>`;
+}
+function openClientForm(id,prefill){
+  const c=state.clients.find(x=>x.id===id)||prefill||{};
+  const team=c.team||[];
+  openModal(id?'עריכת לקוח':'הוספת לקוח',`
+    <div class="form-grid">
+      <div><label class="req">שם פרטי + משפחה</label><input id="f_nm" value="${esc(c.name||'')}"></div>
+      <div><label>שם חברה</label><input id="f_co" value="${esc(c.company||'')}"></div>
+      <div><label class="req">אימייל</label><input id="f_em" type="email" dir="ltr" value="${esc(c.email||'')}"></div>
+      <div><label class="req">טלפון</label><input id="f_ph" dir="ltr" value="${esc(c.phone||'')}"></div>
+      <div><label>תאריך לידה</label><input id="f_bd" type="date" value="${c.birthDate||''}"></div>
+      <div><label>סטטוס</label><select id="f_st">${['פעיל','ממתין','לא פעיל'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="full"><label class="req">צוות מטפל (ניתן לבחור כמה עובדים)</label>
+        <div class="check-list">${state.employees.filter(e=>e.status==='פעיל').map(e=>`<label><input type="checkbox" class="teamChk" value="${e.id}" ${team.includes(e.id)?'checked':''}> ${esc(e.firstName)} ${esc(e.lastName)} · ${esc(e.role)}</label>`).join('')}</div>
+      </div>
+      ${isAdmin()?`<div><label>עלות חודשית (₪)</label><input id="f_mc" type="number" min="0" value="${c.monthlyCost??''}"></div>`:''}
+      <div><label>תאריך חתימת חוזה</label><input id="f_cd" type="date" value="${c.contractDate||''}"></div>
+      <div class="full"><label>קובץ חוזה ${c.contractFile?'(קיים: '+esc(c.contractFile.name)+' — בחירת קובץ תחליף אותו)':''}</label><input id="f_cf" type="file" accept=".pdf,.doc,.docx,.png,.jpg"></div>
+      <div class="full"><label>כתובת</label><input id="f_ad" value="${esc(c.address||'')}"></div>
+      <div class="full"><label>הערות</label><textarea id="f_nt" rows="2">${esc(c.notes||'')}</textarea></div>
+    </div>`,
+    async ()=>{
+      const teamSel=[...document.querySelectorAll('.teamChk:checked')].map(x=>x.value);
+      if(!val('f_nm')||!val('f_em')||!val('f_ph')){toast('שם, אימייל וטלפון הם שדות חובה','err');return false}
+      if(!/^\S+@\S+\.\S+$/.test(val('f_em'))){toast('כתובת אימייל לא תקינה','err');return false}
+      if(!teamSel.length){toast('יש לבחור לפחות עובד אחד בצוות המטפל','err');return false}
+      const file=await readFileInput(document.getElementById('f_cf'));
+      const obj={name:val('f_nm'),company:val('f_co'),email:val('f_em'),phone:val('f_ph'),birthDate:val('f_bd'),team:teamSel,status:val('f_st'),contractDate:val('f_cd'),address:val('f_ad'),notes:val('f_nt')};
+      if(isAdmin())obj.monthlyCost=numVal('f_mc');
+      if(id){
+        const ex=state.clients.find(x=>x.id===id);Object.assign(ex,obj);
+        const upd={...obj};
+        if(file!==undefined){ex.contractFile=file;upd.contractFile=file}
+        bg(dbUpdate('clients',id,upd));
+      }else{
+        const nid=uid();
+        const rec={id:nid,contractFile:file||null,monthlyCost:obj.monthlyCost||0,...obj};
+        state.clients.push(rec);bg(dbInsert('clients',rec));
+      }
+      toast(id?'הלקוח עודכן':'הלקוח נוסף בהצלחה');
+    },{wide:true});
+}
+function delClient(id){
+  const c=state.clients.find(x=>x.id===id);
+  confirmDelete(`למחוק את הלקוח <b>${esc(c.name)}</b>? רישומי שעות ותשלומים משויכים יישארו בהיסטוריה.`,
+    `()=>{delClientDo('${id}')}`);
+}
+function delClientDo(id){
+  state.clients=state.clients.filter(x=>x.id!==id);
+  state.hours.forEach(h=>{if(h.clientId===id)h.clientId=null});
+  state.payments.forEach(p=>{if(p.clientId===id)p.clientId=null});
+  bg(dbDelete('clients',id));
+}
+function openClientCard(id){
+  const c=state.clients.find(x=>x.id===id); if(!c)return;
+  const admin=isAdmin();
+  const hrs=state.hours.filter(h=>h.clientId===id);
+  const tot=hrs.reduce((s,h)=>s+h.hours,0);
+  const pays=state.payments.filter(p=>p.clientId===id);
+  const paid=pays.filter(p=>p.status==='שולם').reduce((s,p)=>s+p.amount,0);
+  const wait=pays.filter(p=>p.status!=='שולם').reduce((s,p)=>s+p.amount,0);
+  openModal(`${esc(c.name)}${c.company?' · '+esc(c.company):''}`,`
+    <div class="detail-rows">
+      <div class="row"><span>אימייל</span><b dir="ltr">${esc(c.email)}</b></div>
+      <div class="row"><span>טלפון</span><b dir="ltr">${esc(c.phone)}</b></div>
+      <div class="row"><span>כתובת</span><b>${esc(c.address||'—')}</b></div>
+      <div class="row"><span>סטטוס</span><span class="badge ${c.status==='פעיל'?'b-green':c.status==='ממתין'?'b-yellow':'b-gray'}">${c.status}</span></div>
+      <div class="row"><span>צוות מטפל</span><b>${c.team.map(empName).join(', ')||'—'}</b></div>
+    </div>
+    <div class="section-title">חוזה</div>
+    <div class="detail-rows">
+      <div class="row"><span>תאריך חתימה</span><b>${fmtDate(c.contractDate)}</b></div>
+      <div class="row"><span>קובץ חוזה</span><span>${c.contractFile?fileChip(c.contractFile):'לא צורף'}</span></div>
+      ${admin?`<div class="row"><span>עלות חודשית</span><b>${fmtMoney(c.monthlyCost)}</b></div>`:''}
+    </div>
+    <div class="section-title">פעילות וכספים</div>
+    <div class="detail-rows">
+      <div class="row"><span>סך שעות שהושקעו</span><b>${fmtNum(tot)} שעות</b></div>
+      ${admin?`<div class="row"><span>שולם עד היום</span><b style="color:var(--green)">${fmtMoney(paid)}</b></div>
+      <div class="row"><span>ממתין / באיחור</span><b style="color:${wait?'var(--red)':'inherit'}">${fmtMoney(wait)}</b></div>`:''}
+    </div>
+    ${c.notes?`<div class="section-title">הערות</div><p style="font-size:13.5px;color:var(--txt)">${esc(c.notes)}</p>`:''}`,null,
+    {extraFoot:`<button class="btn btn-ghost" onclick="closeModal();openClientForm('${id}')">✏️ עריכה</button>`});
+}
+
+/* ================= LEADS ================= */
+const LEAD_STATUSES=['חדש','שיחה ראשונה','הצעת מחיר','משא ומתן','נסגר','אבוד'];
+let leadSearch='',leadStFilter='all';
+function leadBadge(s){return {'חדש':'b-blue','שיחה ראשונה':'b-purple','הצעת מחיר':'b-yellow','משא ומתן':'b-gold','נסגר':'b-green','אבוד':'b-gray'}[s]||'b-gray'}
+function renderLeads(){
+  const q=leadSearch.toLowerCase();
+  const list=state.leads.filter(l=>{
+    const t=(l.name+' '+(l.company||'')+' '+(l.email||'')).toLowerCase();
+    return (!q||t.includes(q))&&(leadStFilter==='all'||l.status===leadStFilter);
+  }).sort((a,b)=>b.date.localeCompare(a.date));
+  const counts=Object.fromEntries(LEAD_STATUSES.map(s=>[s,state.leads.filter(l=>l.status===s).length]));
+  document.getElementById('main').innerHTML=`
+    <div class="page-head">
+      <div><h2>לידים</h2><div class="sub">צנרת הפניות של מנוף — משיחה ראשונה ועד המרה ללקוח</div></div>
+      <button class="btn btn-primary" onclick="openLeadForm()">+ ליד חדש</button>
+    </div>
+    <div class="pipe">${LEAD_STATUSES.map(s=>`<div class="cell ${s==='משא ומתן'&&counts[s]?'hot':''}"><div class="n">${counts[s]}</div><div class="t">${s}</div></div>`).join('')}</div>
+    <div class="toolbar">
+      <input type="search" placeholder="חיפוש ליד…" value="${esc(leadSearch)}" oninput="leadSearch=this.value;render()">
+      <select onchange="leadStFilter=this.value;render()">
+        <option value="all">כל השלבים</option>
+        ${LEAD_STATUSES.map(s=>`<option ${leadStFilter===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card tbl-wrap"><table>
+      <thead><tr><th>שם</th><th>חברה</th><th>טלפון</th><th>מקור</th><th>תאריך כניסה</th><th>שלב בצנרת</th><th>המרה</th><th></th></tr></thead>
+      <tbody>${list.length?list.map(l=>`
+        <tr>
+          <td><b>${esc(l.name)}</b>${l.notes?`<div style="font-size:12px;color:var(--muted);max-width:260px">${esc(l.notes)}</div>`:''}</td>
+          <td>${esc(l.company||'—')}</td>
+          <td dir="ltr" style="text-align:right">${esc(l.phone)}</td>
+          <td><span class="badge b-gray">${esc(l.source)}</span></td>
+          <td>${fmtDate(l.date)}</td>
+          <td><select class="inline-status" onchange="setLeadStatus('${l.id}',this.value)">${LEAD_STATUSES.map(s=>`<option ${l.status===s?'selected':''}>${s}</option>`).join('')}</select></td>
+          <td>${!['נסגר','אבוד'].includes(l.status)?`<button class="btn btn-gold btn-sm" onclick="convertLead('${l.id}')">→ הפוך ללקוח</button>`:l.status==='נסגר'?'<span class="badge b-green">הומר ✓</span>':'—'}</td>
+          <td><button class="icon-btn" onclick="openLeadForm('${l.id}')">✏️</button><button class="icon-btn" onclick="delLead('${l.id}')">🗑️</button></td>
+        </tr>`).join(''):`<tr><td colspan="8"><div class="empty-state"><div class="big">🎯</div>אין לידים בסינון הנוכחי — כל פנייה חדשה מתחילה כאן</div></td></tr>`}
+      </tbody></table></div>`;
+}
+function setLeadStatus(id,s){const l=state.leads.find(x=>x.id===id);l.status=s;bg(dbUpdate('leads',id,{status:s}));render();toast('שלב הליד עודכן: '+s)}
+function openLeadForm(id){
+  const l=state.leads.find(x=>x.id===id)||{};
+  const sources=['אתר','פייסבוק','לינקדאין','המלצה','שיחה קרה','אחר'];
+  openModal(id?'עריכת ליד':'ליד חדש',`
+    <div class="form-grid">
+      <div><label class="req">שם</label><input id="f_nm" value="${esc(l.name||'')}"></div>
+      <div><label>חברה</label><input id="f_co" value="${esc(l.company||'')}"></div>
+      <div><label class="req">טלפון</label><input id="f_ph" dir="ltr" value="${esc(l.phone||'')}"></div>
+      <div><label>אימייל</label><input id="f_em" type="email" dir="ltr" value="${esc(l.email||'')}"></div>
+      <div><label>מקור</label><select id="f_src">${sources.map(s=>`<option ${l.source===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div><label>שלב</label><select id="f_st">${LEAD_STATUSES.map(s=>`<option ${(l.status||'חדש')===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="full"><label>הערות</label><textarea id="f_nt" rows="2">${esc(l.notes||'')}</textarea></div>
+    </div>`,
+    ()=>{
+      if(!val('f_nm')||!val('f_ph')){toast('שם וטלפון הם שדות חובה','err');return false}
+      const obj={name:val('f_nm'),company:val('f_co'),phone:val('f_ph'),email:val('f_em'),source:val('f_src'),status:val('f_st'),notes:val('f_nt')};
+      if(id){Object.assign(state.leads.find(x=>x.id===id),obj);bg(dbUpdate('leads',id,obj))}
+      else{const nid=uid();const rec={id:nid,date:todayISO(),...obj};state.leads.push(rec);bg(dbInsert('leads',rec))}
+      toast(id?'הליד עודכן':'הליד נוסף לצנרת');
+    });
+}
+function delLead(id){
+  const l=state.leads.find(x=>x.id===id);
+  confirmDelete(`למחוק את הליד <b>${esc(l.name)}</b>?`,`()=>{state.leads=state.leads.filter(x=>x.id!=='${id}');bg(dbDelete('leads','${id}'))}`);
+}
+function convertLead(id){
+  const l=state.leads.find(x=>x.id===id);
+  l.status='נסגר'; bg(dbUpdate('leads',id,{status:'נסגר'}));
+  toast('הליד סומן כ"נסגר" — משלימים את פרטי הלקוח');
+  go('clients');
+  setTimeout(()=>openClientForm(null,{name:l.name,company:l.company,email:l.email,phone:l.phone,notes:'הומר מליד ('+l.source+'). '+(l.notes||''),status:'פעיל',team:[]}),60);
+}
+
+/* ================= CANDIDATES (CV bank) ================= */
+const CAND_STATUSES=['חדש','נבדק','זומן לראיון','הושם','במאגר','לא רלוונטי'];
+let candSearch='',candFieldFilter='all',candStFilter='all';
+function candBadge(s){return {'חדש':'b-blue','נבדק':'b-purple','זומן לראיון':'b-yellow','הושם':'b-green','במאגר':'b-gold','לא רלוונטי':'b-gray'}[s]||'b-gray'}
+function renderCandidates(){
+  const q=candSearch.toLowerCase();
+  const fields=[...new Set(state.candidates.map(c=>c.field))].sort();
+  const list=state.candidates.filter(c=>{
+    const t=(c.name+' '+c.field+' '+c.skills.join(' ')).toLowerCase();
+    return (!q||t.includes(q))&&(candFieldFilter==='all'||c.field===candFieldFilter)&&(candStFilter==='all'||c.status===candStFilter);
+  });
+  const n=s=>state.candidates.filter(c=>c.status===s).length;
+  const inProc=n('נבדק')+n('זומן לראיון');
+  document.getElementById('main').innerHTML=`
+    <div class="page-head">
+      <div><h2>מאגר קורות חיים</h2><div class="sub">בנק מועמדים להשמה ולפרויקטים אצל לקוחות</div></div>
+      <button class="btn btn-primary" onclick="openCandidateForm()">+ מועמד חדש</button>
+    </div>
+    <div class="pipe">
+      <div class="cell"><div class="n">${state.candidates.length}</div><div class="t">סה"כ במאגר</div></div>
+      <div class="cell"><div class="n">${n('חדש')}</div><div class="t">חדשים</div></div>
+      <div class="cell ${inProc?'hot':''}"><div class="n">${inProc}</div><div class="t">בתהליך</div></div>
+      <div class="cell"><div class="n">${n('הושם')}</div><div class="t">הושמו</div></div>
+      <div class="cell"><div class="n">${n('במאגר')}</div><div class="t">במאגר</div></div>
+    </div>
+    <div class="toolbar">
+      <input type="search" placeholder="חיפוש לפי שם, תחום או כישור…" value="${esc(candSearch)}" oninput="candSearch=this.value;render()">
+      <select onchange="candFieldFilter=this.value;render()">
+        <option value="all">כל התחומים</option>
+        ${fields.map(f=>`<option ${candFieldFilter===f?'selected':''}>${esc(f)}</option>`).join('')}
+      </select>
+      <select onchange="candStFilter=this.value;render()">
+        <option value="all">כל הסטטוסים</option>
+        ${CAND_STATUSES.map(s=>`<option ${candStFilter===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card tbl-wrap"><table>
+      <thead><tr><th>מועמד</th><th>תחום</th><th>ניסיון</th><th>כישורים</th><th>מקור</th><th>קו"ח</th><th>סטטוס</th><th></th></tr></thead>
+      <tbody>${list.length?list.map(c=>`
+        <tr>
+          <td><b>${esc(c.name)}</b><div style="font-size:12px;color:var(--muted)" dir="ltr">${esc(c.phone||'')}</div></td>
+          <td>${esc(c.field)}</td>
+          <td>${c.experience?c.experience+' שנים':'—'}</td>
+          <td style="max-width:220px">${c.skills.map(s=>`<span class="tag">${esc(s)}</span>`).join('')||'—'}</td>
+          <td><span class="badge b-gray">${esc(c.source||'—')}</span></td>
+          <td>${c.cvFile?fileChip(c.cvFile):'<span style="color:var(--muted)">—</span>'}</td>
+          <td><select class="inline-status" onchange="setCandStatus('${c.id}',this.value)">${CAND_STATUSES.map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}</select></td>
+          <td><button class="icon-btn" onclick="openCandidateForm('${c.id}')">✏️</button><button class="icon-btn" onclick="delCandidate('${c.id}')">🗑️</button></td>
+        </tr>`).join(''):`<tr><td colspan="8"><div class="empty-state"><div class="big">📄</div>לא נמצאו מועמדים תואמים</div></td></tr>`}
+      </tbody></table></div>
+    <p style="margin-top:12px;font-size:12.5px;color:var(--muted)">💡 בשלב עתידי: קליטה אוטומטית של קו"ח מהמייל עם זיהוי תחום וכישורים באמצעות AI (סעיף 3.5 באפיון).</p>`;
+}
+function setCandStatus(id,s){state.candidates.find(x=>x.id===id).status=s;bg(dbUpdate('candidates',id,{status:s}));render();toast('סטטוס המועמד עודכן: '+s)}
+function openCandidateForm(id){
+  const c=state.candidates.find(x=>x.id===id)||{skills:[]};
+  const sources=['אתר','אלljobs','לינקדאין','המלצה','אחר'];
+  openModal(id?'עריכת מועמד':'מועמד חדש',`
+    <div class="form-grid">
+      <div><label class="req">שם מלא</label><input id="f_nm" value="${esc(c.name||'')}"></div>
+      <div><label class="req">תחום / תפקיד</label><input id="f_fd" value="${esc(c.field||'')}" placeholder="למשל: חשבת שכר, מנהל כספים"></div>
+      <div><label>שנות ניסיון</label><input id="f_ex" type="number" min="0" value="${c.experience??''}"></div>
+      <div><label>מקור</label><select id="f_src">${sources.map(s=>`<option ${c.source===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div><label>טלפון</label><input id="f_ph" dir="ltr" value="${esc(c.phone||'')}"></div>
+      <div><label>אימייל</label><input id="f_em" type="email" dir="ltr" value="${esc(c.email||'')}"></div>
+      <div class="full"><label>כישורים (מופרדים בפסיק)</label><input id="f_sk" value="${esc(c.skills.join(', '))}" placeholder="פריוריטי, SAP, אקסל, IFRS"></div>
+      <div><label>סטטוס</label><select id="f_st">${CAND_STATUSES.map(s=>`<option ${(c.status||'חדש')===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div><label>קובץ קו"ח ${c.cvFile?'(קיים)':''}</label><input id="f_cv" type="file" accept=".pdf,.doc,.docx"></div>
+      <div class="full"><label>הערות (התרשמות, ציפיות שכר, זמינות)</label><textarea id="f_nt" rows="2">${esc(c.notes||'')}</textarea></div>
+    </div>`,
+    async ()=>{
+      if(!val('f_nm')||!val('f_fd')){toast('שם ותחום הם שדות חובה','err');return false}
+      const file=await readFileInput(document.getElementById('f_cv'));
+      const obj={name:val('f_nm'),field:val('f_fd'),experience:numVal('f_ex'),phone:val('f_ph'),email:val('f_em'),
+        skills:val('f_sk').split(',').map(s=>s.trim()).filter(Boolean),source:val('f_src'),status:val('f_st'),notes:val('f_nt')};
+      if(id){
+        const ex=state.candidates.find(x=>x.id===id);Object.assign(ex,obj);
+        const upd={...obj};
+        if(file!==undefined){ex.cvFile=file;upd.cvFile=file}
+        bg(dbUpdate('candidates',id,upd));
+      }else{
+        const nid=uid();const rec={id:nid,cvFile:file||null,...obj};
+        state.candidates.push(rec);bg(dbInsert('candidates',rec));
+      }
+      toast(id?'המועמד עודכן':'המועמד נוסף למאגר');
+    });
+}
+function delCandidate(id){
+  const c=state.candidates.find(x=>x.id===id);
+  confirmDelete(`למחוק את המועמד <b>${esc(c.name)}</b> מהמאגר?`,`()=>{state.candidates=state.candidates.filter(x=>x.id!=='${id}');bg(dbDelete('candidates','${id}'))}`);
+}
+
+/* ================= HOURS ================= */
+let hrEmpFilter='all',hrCliFilter='all';
+function renderHours(){
+  const list=state.hours.filter(h=>(hrEmpFilter==='all'||h.employeeId===hrEmpFilter)&&(hrCliFilter==='all'||h.clientId===hrCliFilter))
+    .sort((a,b)=>b.date.localeCompare(a.date));
+  const tot=list.reduce((s,h)=>s+h.hours,0);
+  const bill=list.filter(h=>h.billable).reduce((s,h)=>s+h.hours,0);
+  document.getElementById('main').innerHTML=`
+    <div class="page-head">
+      <div><h2>מעקב שעות</h2><div class="sub">בסינון הנוכחי: ${fmtNum(tot)} שעות, מתוכן ${fmtNum(bill)} לחיוב</div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="downloadHoursTemplate()">⬇ תבנית אקסל</button>
+        <button class="btn btn-ghost" onclick="openImportModal()">📥 ייבוא מאקסל</button>
+        <button class="btn btn-primary" onclick="openHourForm()">+ רישום שעות</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <select onchange="hrEmpFilter=this.value;render()">
+        <option value="all">כל העובדים</option>
+        ${state.employees.map(e=>`<option value="${e.id}" ${hrEmpFilter===e.id?'selected':''}>${esc(e.firstName)} ${esc(e.lastName)}</option>`).join('')}
+      </select>
+      <select onchange="hrCliFilter=this.value;render()">
+        <option value="all">כל הלקוחות</option>
+        ${state.clients.map(c=>`<option value="${c.id}" ${hrCliFilter===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card tbl-wrap"><table>
+      <thead><tr><th>תאריך</th><th>עובד</th><th>לקוח</th><th>שעות</th><th>תיאור</th><th>לחיוב</th><th></th></tr></thead>
+      <tbody>${list.length?list.map(h=>`
+        <tr>
+          <td>${fmtDate(h.date)}</td>
+          <td>${esc(empName(h.employeeId))}</td>
+          <td>${esc(clientName(h.clientId))}</td>
+          <td><b>${fmtNum(h.hours)}</b></td>
+          <td style="max-width:280px">${esc(h.description||'—')}</td>
+          <td>${h.billable?'<span class="badge b-green">✓ לחיוב</span>':'<span class="badge b-gray">פנימי</span>'}</td>
+          <td><button class="icon-btn" onclick="openHourForm('${h.id}')">✏️</button><button class="icon-btn" onclick="delHour('${h.id}')">🗑️</button></td>
+        </tr>`).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="big">⏱️</div>אין רישומי שעות בסינון הנוכחי — אפשר לרשום ידנית או לייבא מאקסל</div></td></tr>`}
+      </tbody></table></div>`;
+}
+function openHourForm(id){
+  const h=state.hours.find(x=>x.id===id)||{};
+  openModal(id?'עריכת רישום שעות':'רישום שעות',`
+    <div class="form-grid">
+      <div><label class="req">עובד</label><select id="f_emp">${state.employees.map(e=>`<option value="${e.id}" ${h.employeeId===e.id?'selected':''}>${esc(e.firstName)} ${esc(e.lastName)}</option>`).join('')}</select></div>
+      <div><label class="req">לקוח</label><select id="f_cli">${state.clients.map(c=>`<option value="${c.id}" ${h.clientId===c.id?'selected':''}>${esc(c.name)}${c.company?' · '+esc(c.company):''}</option>`).join('')}</select></div>
+      <div><label class="req">תאריך</label><input id="f_dt" type="date" value="${h.date||todayISO()}"></div>
+      <div><label class="req">מספר שעות (מינימום 0.25)</label><input id="f_hr" type="number" step="0.25" min="0.25" value="${h.hours??''}"></div>
+      <div class="full"><label>תיאור העבודה</label><input id="f_ds" value="${esc(h.description||'')}" placeholder="למשל: הכנת דוח תזרים חודשי"></div>
+      <div class="full"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--txt)"><input type="checkbox" id="f_bl" style="width:auto" ${h.billable!==false?'checked':''}> השעה ניתנת לחיוב ללקוח</label></div>
+    </div>`,
+    ()=>{
+      const hrsV=numVal('f_hr');
+      if(!val('f_dt')||hrsV<0.25){toast('יש להזין תאריך ומספר שעות (מינימום 0.25)','err');return false}
+      const obj={employeeId:val('f_emp'),clientId:val('f_cli'),date:val('f_dt'),hours:hrsV,description:val('f_ds'),billable:document.getElementById('f_bl').checked};
+      if(id){Object.assign(state.hours.find(x=>x.id===id),obj);bg(dbUpdate('hours',id,obj))}
+      else{const nid=uid();state.hours.push({id:nid,...obj});bg(dbInsert('hours',{id:nid,...obj}))}
+      toast(id?'הרישום עודכן':'השעות נרשמו בהצלחה');
+    });
+}
+function delHour(id){confirmDelete('למחוק רישום שעות זה?',`()=>{state.hours=state.hours.filter(x=>x.id!=='${id}');bg(dbDelete('hours','${id}'))}`)}
+
+/* --- Excel import --- */
+function downloadHoursTemplate(){
+  const ws=XLSX.utils.aoa_to_sheet([
+    ['עובד','לקוח','תאריך','שעות','תיאור','לחיוב'],
+    ['אוראל מזרחי','דוד אברהמי','2026-07-01',3.5,'ליווי שוטף','כן'],
+    ['רונן לוי','מיכל שרון','2026-07-02',2,'דוח תזרים','כן']
+  ]);
+  ws['!cols']=[{wch:16},{wch:18},{wch:12},{wch:8},{wch:28},{wch:8}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'שעות');
+  XLSX.writeFile(wb,'תבנית-שעות-מנוף.xlsx');
+  toast('התבנית ירדה — ממלאים ומייבאים חזרה');
+}
+function normalizeName(s){return String(s||'').replace(/["'״׳]/g,'').replace(/\s+/g,' ').trim().toLowerCase()}
+function matchEmployee(name){
+  const n=normalizeName(name); if(!n)return null;
+  return state.employees.find(e=>{
+    const full=normalizeName(e.firstName+' '+e.lastName);
+    return full===n||full.includes(n)||n.includes(normalizeName(e.firstName))&&n.includes(normalizeName(e.lastName))||normalizeName(e.firstName)===n;
+  })||null;
+}
+function matchClient(name){
+  const n=normalizeName(name); if(!n)return null;
+  return state.clients.find(c=>{
+    const nm=normalizeName(c.name), co=normalizeName(c.company||'');
+    return nm===n||nm.includes(n)||n.includes(nm)||(co&&(co===n||co.includes(n)||n.includes(co)));
+  })||null;
+}
+function excelDate(v){
+  if(v==null||v==='')return '';
+  if(typeof v==='number'){const d=XLSX.SSF.parse_date_code(v);if(d)return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`}
+  const s=String(v).trim();
+  let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m)return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m=s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})/); if(m){const y=m[3].length===2?'20'+m[3]:m[3];return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}
+  return '';
+}
+function openImportModal(){
+  openModal('ייבוא שעות מאקסל',`
+    <p style="font-size:13.5px;color:var(--muted);margin-bottom:12px">קובץ xlsx / xls / csv עם העמודות: <b>עובד, לקוח, תאריך, שעות, תיאור, לחיוב</b>. המערכת מזהה עובד ולקוח לפי השם בהתאמה גמישה (גם שם חברה עובד).</p>
+    <div class="import-zone">
+      <div style="font-size:30px;margin-bottom:6px">📥</div>
+      <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="max-width:300px;margin:0 auto">
+    </div>
+    <div id="importResult" style="margin-top:14px"></div>`,null,
+    {extraFoot:`<button class="btn btn-primary" onclick="runImport()">בצע ייבוא</button>`});
+}
+function runImport(){
+  const inp=document.getElementById('importFile');
+  const f=inp?.files?.[0];
+  if(!f){toast('יש לבחור קובץ תחילה','err');return}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      let ok=0; const skipped=[]; const imported=[];
+      rows.forEach((r,i)=>{
+        const keys=Object.keys(r);
+        const get=(...names)=>{const k=keys.find(k=>names.some(n=>normalizeName(k).includes(n)));return k?r[k]:''};
+        const empRaw=get('עובד'), cliRaw=get('לקוח'), dtRaw=get('תאריך'), hrRaw=get('שעות'), ds=get('תיאור'), blRaw=String(get('לחיוב','חיוב')).trim();
+        const emp=matchEmployee(empRaw), cli=matchClient(cliRaw);
+        const date=excelDate(dtRaw), hrs=parseFloat(hrRaw);
+        if(!emp){skipped.push(`שורה ${i+2}: עובד לא זוהה ("${esc(String(empRaw))}")`);return}
+        if(!cli){skipped.push(`שורה ${i+2}: לקוח לא זוהה ("${esc(String(cliRaw))}")`);return}
+        if(!date||isNaN(hrs)||hrs<0.25){skipped.push(`שורה ${i+2}: תאריך או שעות לא תקינים`);return}
+        const rec={id:uid(),employeeId:emp.id,clientId:cli.id,date,hours:hrs,description:String(ds||''),billable:!['לא','no','0','false'].includes(blRaw.toLowerCase())};
+        state.hours.push(rec);imported.push(rec);
+        ok++;
+      });
+      save();
+      if(imported.length)bg(dbBulkInsert('hours',imported));
+      document.getElementById('importResult').innerHTML=`
+        <div class="badge b-green" style="font-size:13px">✓ יובאו ${ok} רשומות</div>
+        ${skipped.length?`<div class="badge b-yellow" style="font-size:13px;margin-right:8px">דולגו ${skipped.length}</div>
+        <ul style="margin-top:10px;font-size:12.5px;color:var(--muted);padding-right:18px">${skipped.slice(0,8).map(s=>`<li>${s}</li>`).join('')}${skipped.length>8?'<li>…ועוד</li>':''}</ul>`:''}`;
+      toast(`ייבוא הושלם: ${ok} רשומות${skipped.length?', '+skipped.length+' דולגו':''}`);
+      if(ok&&!skipped.length)setTimeout(()=>{closeModal();render()},1400);
+    }catch(err){toast('שגיאה בקריאת הקובץ — ודאו שזה קובץ אקסל תקין','err')}
+  };
+  reader.readAsArrayBuffer(f);
+}
+
+/* ================= PAYMENTS (admin only) ================= */
+const PAY_STATUSES=['שולם','ממתין','באיחור'];
+let payStFilter='all',payCliFilter='all';
+function payBadgeCls(s){return s==='שולם'?'b-green':s==='ממתין'?'b-yellow':'b-red'}
+function renderPayments(){
+  const list=state.payments.filter(p=>(payStFilter==='all'||p.status===payStFilter)&&(payCliFilter==='all'||p.clientId===payCliFilter))
+    .sort((a,b)=>b.date.localeCompare(a.date));
+  const sum=s=>state.payments.filter(p=>p.status===s).reduce((t,p)=>t+p.amount,0);
+  document.getElementById('main').innerHTML=`
+    <div class="page-head">
+      <div><h2>תשלומים</h2><div class="sub">מעקב חשבוניות וגבייה — הנהלה בלבד</div></div>
+      <button class="btn btn-primary" onclick="openPaymentForm()">+ תשלום חדש</button>
+    </div>
+    <div class="stats">
+      <div class="stat" style="border-top:3px solid var(--green)"><div class="lbl">סה"כ שולם</div><div class="val">${fmtMoney(sum('שולם'))}</div></div>
+      <div class="stat" style="border-top:3px solid #e0b13c"><div class="lbl">ממתין לתשלום</div><div class="val">${fmtMoney(sum('ממתין'))}</div></div>
+      <div class="stat" style="border-top:3px solid var(--red)"><div class="lbl">באיחור</div><div class="val">${fmtMoney(sum('באיחור'))}</div>${sum('באיחור')?'<div class="note">מומלץ לטפל בהקדם</div>':''}</div>
+    </div>
+    <div class="toolbar">
+      <select onchange="payStFilter=this.value;render()">
+        <option value="all">כל הסטטוסים</option>
+        ${PAY_STATUSES.map(s=>`<option ${payStFilter===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+      <select onchange="payCliFilter=this.value;render()">
+        <option value="all">כל הלקוחות</option>
+        ${state.clients.map(c=>`<option value="${c.id}" ${payCliFilter===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card tbl-wrap"><table>
+      <thead><tr><th>לקוח</th><th>סכום</th><th>תאריך</th><th>מס' חשבונית</th><th>סטטוס</th><th>הערות</th><th></th></tr></thead>
+      <tbody>${list.length?list.map(p=>`
+        <tr>
+          <td><b>${esc(clientName(p.clientId))}</b></td>
+          <td><b>${fmtMoney(p.amount)}</b></td>
+          <td>${fmtDate(p.date)}</td>
+          <td dir="ltr" style="text-align:right">${esc(p.invoice||'—')}</td>
+          <td><select class="inline-status" style="background:${p.status==='שולם'?'var(--green-bg)':p.status==='ממתין'?'var(--yellow-bg)':'var(--red-bg)'}" onchange="setPayStatus('${p.id}',this.value)">${PAY_STATUSES.map(s=>`<option ${p.status===s?'selected':''}>${s}</option>`).join('')}</select></td>
+          <td style="max-width:200px;font-size:12.5px;color:var(--muted)">${esc(p.notes||'')}</td>
+          <td><button class="icon-btn" onclick="openPaymentForm('${p.id}')">✏️</button><button class="icon-btn" onclick="delPayment('${p.id}')">🗑️</button></td>
+        </tr>`).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="big">💳</div>אין תשלומים בסינון הנוכחי</div></td></tr>`}
+      </tbody></table></div>`;
+}
+function setPayStatus(id,s){state.payments.find(x=>x.id===id).status=s;bg(dbUpdate('payments',id,{status:s}));render();toast('סטטוס התשלום עודכן: '+s)}
+function openPaymentForm(id){
+  const p=state.payments.find(x=>x.id===id)||{};
+  openModal(id?'עריכת תשלום':'תשלום חדש',`
+    <div class="form-grid">
+      <div><label class="req">לקוח</label><select id="f_cli">${state.clients.map(c=>`<option value="${c.id}" ${p.clientId===c.id?'selected':''}>${esc(c.name)}${c.company?' · '+esc(c.company):''}</option>`).join('')}</select></div>
+      <div><label class="req">סכום (₪)</label><input id="f_am" type="number" min="0" value="${p.amount??''}"></div>
+      <div><label class="req">תאריך</label><input id="f_dt" type="date" value="${p.date||todayISO()}"></div>
+      <div><label>מספר חשבונית</label><input id="f_inv" dir="ltr" value="${esc(p.invoice||'')}"></div>
+      <div><label>סטטוס</label><select id="f_st">${PAY_STATUSES.map(s=>`<option ${(p.status||'ממתין')===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="full"><label>הערות</label><textarea id="f_nt" rows="2">${esc(p.notes||'')}</textarea></div>
+    </div>`,
+    ()=>{
+      if(!val('f_dt')||numVal('f_am')<=0){toast('יש להזין סכום חיובי ותאריך','err');return false}
+      const obj={clientId:val('f_cli'),amount:numVal('f_am'),date:val('f_dt'),invoice:val('f_inv'),status:val('f_st'),notes:val('f_nt')};
+      if(id){Object.assign(state.payments.find(x=>x.id===id),obj);bg(dbUpdate('payments',id,obj))}
+      else{const nid=uid();state.payments.push({id:nid,...obj});bg(dbInsert('payments',{id:nid,...obj}))}
+      toast(id?'התשלום עודכן':'התשלום נוסף');
+    });
+}
+function delPayment(id){confirmDelete('למחוק רישום תשלום זה?',`()=>{state.payments=state.payments.filter(x=>x.id!=='${id}');bg(dbDelete('payments','${id}'))}`)}
+
+/* ================= BACKUP & RESTORE (admin) ================= */
+const BK_KEY='manofCRM_lastBackup';
+function lastBackupText(){
+  const t=localStorage.getItem(BK_KEY);
+  if(!t)return 'טרם בוצע גיבוי';
+  return 'גיבוי אחרון: '+fmtDate(t.slice(0,10));
+}
+function markBackup(){
+  localStorage.setItem(BK_KEY,new Date().toISOString());
+  const el=document.getElementById('lastBackupNote'); if(el)el.textContent=lastBackupText();
+}
+function backupOverdue(){
+  const t=localStorage.getItem(BK_KEY);
+  if(!t)return true;
+  return (Date.now()-new Date(t).getTime())>7*86400000;
+}
+function stamp(){const d=new Date();return d.toISOString().slice(0,10)}
+
+function exportBackupExcel(){
+  if(!can('backup')){toast('אין לך הרשאה לגיבוי','err');return}
+  const wb=XLSX.utils.book_new();
+  const sheet=(name,headers,rows,cols)=>{
+    const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
+    if(cols)ws['!cols']=cols.map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,ws,name);
+  };
+  const yn=b=>b?'כן':'לא';
+  sheet('עובדים',
+    ['שם פרטי','שם משפחה','אימייל','טלפון','תאריך לידה','תפקיד','משכורת חודשית','בונוס','תאריך התחלה','כתובת','סטטוס'],
+    state.employees.map(e=>[e.firstName,e.lastName,e.email,e.phone,e.birthDate,e.role,e.salary,e.bonus||0,e.startDate,e.address,e.status]),
+    [12,12,24,14,12,20,14,10,12,26,10]);
+  sheet('לקוחות',
+    ['שם','חברה','אימייל','טלפון','תאריך לידה','צוות מטפל','סטטוס','עלות חודשית','תאריך חוזה','קובץ חוזה','כתובת','הערות'],
+    state.clients.map(c=>[c.name,c.company||'',c.email,c.phone,c.birthDate||'',c.team.map(empName).join(', '),c.status,c.monthlyCost||0,c.contractDate||'',c.contractFile?c.contractFile.name:'',c.address||'',c.notes||'']),
+    [16,20,24,14,12,26,10,12,12,20,18,34]);
+  sheet('לידים',
+    ['שם','חברה','טלפון','אימייל','מקור','שלב','תאריך כניסה','הערות'],
+    state.leads.map(l=>[l.name,l.company||'',l.phone,l.email||'',l.source,l.status,l.date,l.notes||'']),
+    [16,20,14,24,12,14,12,40]);
+  sheet('מאגר קוח',
+    ['שם','תחום','שנות ניסיון','טלפון','אימייל','כישורים','מקור','סטטוס','קובץ קוח','הערות'],
+    state.candidates.map(c=>[c.name,c.field,c.experience||'',c.phone||'',c.email||'',c.skills.join(', '),c.source||'',c.status,c.cvFile?c.cvFile.name:'',c.notes||'']),
+    [16,18,10,14,24,28,12,12,20,34]);
+  sheet('שעות',
+    ['תאריך','עובד','לקוח','שעות','תיאור','לחיוב'],
+    state.hours.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(h=>[h.date,empName(h.employeeId),clientName(h.clientId),h.hours,h.description||'',yn(h.billable)]),
+    [12,16,18,8,32,8]);
+  sheet('תשלומים',
+    ['תאריך','לקוח','סכום','סטטוס','מספר חשבונית','הערות'],
+    state.payments.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(p=>[p.date,clientName(p.clientId),p.amount,p.status,p.invoice||'',p.notes||'']),
+    [12,18,12,10,16,30]);
+  sheet('חופשות',
+    ['עובד','סוג','מתאריך','עד תאריך','ימים','הערות'],
+    state.vacations.slice().sort((a,b)=>a.startDate.localeCompare(b.startDate)).map(v=>[empName(v.employeeId),v.type,v.startDate,v.endDate,vacDays(v),v.notes||'']),
+    [16,10,12,12,8,30]);
+  XLSX.writeFile(wb,`גיבוי-מנוף-CRM-${stamp()}.xlsx`);
+  markBackup();
+  toast('קובץ הגיבוי ירד — 7 גיליונות, כל הנתונים');
+}
+
+function exportBackupJSON(){
+  if(!can('backup'))return;
+  const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),version:1,data:state},null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`גיבוי-מלא-מנוף-CRM-${stamp()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  markBackup();
+  toast('גיבוי JSON מלא ירד — כולל קבצים מצורפים');
+}
+
+function openBackupModal(){
+  if(!can('backup')){toast('אין לך הרשאה לגיבוי','err');return}
+  openModal('גיבוי ושחזור נתונים',`
+    <p style="font-size:13.5px;color:var(--muted);margin-bottom:14px">${lastBackupText()}. מומלץ לגבות אחת לשבוע לפחות, ולשמור את הקובץ ב-Google Drive או בתיקייה משותפת.</p>
+    <div class="section-title">ייצוא</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+      <button class="btn btn-primary" onclick="exportBackupExcel()">🗂️ גיבוי לאקסל (לצפייה)</button>
+      <button class="btn btn-ghost" onclick="exportBackupJSON()">💾 גיבוי JSON מלא (לשחזור)</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted)">אקסל — קריא לכל אחד, 7 גיליונות (עובדים, לקוחות, לידים, מאגר קו"ח, שעות, תשלומים, חופשות), בלי קבצים מצורפים. JSON — עותק מדויק של הכל כולל חוזים וקו"ח, וממנו אפשר לשחזר את המערכת במלואה.</p>
+    <div class="section-title">שחזור מגיבוי JSON</div>
+    <p style="font-size:12.5px;color:var(--red);margin-bottom:8px">⚠️ שחזור מחליף את כל הנתונים הנוכחיים במערכת בנתוני הגיבוי. פעולה זו אינה הפיכה.</p>
+    <input type="file" id="restoreFile" accept=".json">
+    <div style="margin-top:10px"><button class="btn btn-danger" onclick="runRestore()">שחזור מהקובץ שנבחר</button></div>
+    <div id="restoreResult" style="margin-top:10px;font-size:13px"></div>`,null);
+}
+function runRestore(){
+  const f=document.getElementById('restoreFile')?.files?.[0];
+  if(!f){toast('יש לבחור קובץ גיבוי JSON','err');return}
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const parsed=JSON.parse(e.target.result);
+      const d=parsed.data||parsed;
+      const need=['employees','clients','leads','candidates','hours','payments'];
+      if(!need.every(k=>Array.isArray(d[k]))){toast('הקובץ אינו גיבוי תקין של מערכת מנוף','err');return}
+      if(!d.vacations)d.vacations=[];
+      cloudRestore(d);
+    }catch(err){toast('שגיאה בקריאת קובץ הגיבוי','err')}
+  };
+  r.readAsText(f);
+}
+
+async function cloudRestore(d){
+  const out=document.getElementById('restoreResult');
+  out.innerHTML='☁️ משחזר לענן… נא לא לסגור את החלון';
+  try{
+    for(const t of ['vacations','hours','payments','clients','leads','candidates','employees'])
+      await sb.from(t).delete().neq('id','__none__');
+    await dbBulkInsert('employees',d.employees);
+    if(d.employees.length){
+      const {error}=await sb.from('employee_salaries').upsert(d.employees.map(e=>({employee_id:e.id,salary:e.salary||0,bonus:e.bonus||0})));
+      if(error)throw error;
+    }
+    for(const t of ['clients','leads','candidates','hours','payments','vacations'])
+      await dbBulkInsert(t,d[t]||[]);
+    await loadAll(); closeModal(); render();
+    toast(`שוחזר בהצלחה: ${d.employees.length} עובדים, ${d.clients.length} לקוחות, ${d.hours.length} רישומי שעות`);
+  }catch(e){out.innerHTML='<span style="color:var(--red)">שגיאה בשחזור: '+esc(e.message||String(e))+'</span>'}
+}
+
+
+/* ================= VACATIONS PAGE ================= */
+let vacEmpFilter='all';
+function renderVacationsPage(){
+  const list=state.vacations.filter(v=>vacEmpFilter==='all'||v.employeeId===vacEmpFilter)
+    .sort((a,b)=>b.startDate.localeCompare(a.startDate));
+  document.getElementById('main').innerHTML=`
+    <div class="page-head">
+      <div><h2>חופשות והיעדרויות</h2><div class="sub">צפייה בכל ההיעדרויות ורישום חדשות</div></div>
+      <button class="btn btn-primary" onclick="openVacationForm()">+ סימון חופשה</button>
+    </div>
+    <div class="toolbar">
+      <select onchange="vacEmpFilter=this.value;render()">
+        <option value="all">כל העובדים</option>
+        ${state.employees.map(e=>`<option value="${e.id}" ${vacEmpFilter===e.id?'selected':''}>${esc(e.firstName)} ${esc(e.lastName)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="card tbl-wrap"><table>
+      <thead><tr><th>עובד</th><th>סוג</th><th>מתאריך</th><th>עד תאריך</th><th>ימים</th><th>הערות</th><th></th></tr></thead>
+      <tbody>${list.length?list.map(v=>`
+        <tr>
+          <td><b>${esc(empName(v.employeeId))}</b></td>
+          <td><span class="badge ${vacBadgeCls(v.type)}">${esc(v.type)}</span></td>
+          <td>${fmtDate(v.startDate)}</td><td>${fmtDate(v.endDate)}</td>
+          <td>${vacDays(v)}</td>
+          <td style="max-width:240px;font-size:12.5px;color:var(--muted)">${esc(v.notes||'')}</td>
+          <td>${can('vacations','edit')?`<button class="icon-btn" onclick="delVacation('${v.id}',null)">🗑️</button>`:''}</td>
+        </tr>`).join(''):`<tr><td colspan="7"><div class="empty-state"><div class="big">🌴</div>אין היעדרויות רשומות בסינון הנוכחי</div></td></tr>`}
+      </tbody></table></div>`;
+}
+
+/* ================= USERS MANAGEMENT (super admin) ================= */
+let usrSearch='';
+function renderUsers(){
+  if(!can('users','view')){go('dashboard');return}
+  const canEdit=can('users','edit');
+  const q=usrSearch.toLowerCase();
+  const allUsers=state.appUsers||[];
+  const list=allUsers.filter(u=>{
+    const t=(u.name+' '+u.email+' '+u.role).toLowerCase();
+    return !q||t.includes(q);
+  });
+  document.getElementById('main').innerHTML=`
+    <div class="page-head">
+      <div><h2>ניהול משתמשים</h2><div class="sub">${allUsers.length} משתמשים רשומים · ${allUsers.filter(u=>u.status!=='מושבת').length} פעילים</div></div>
+      ${canEdit?`<button class="btn btn-gold" onclick="openInviteForm()">📩 הזמנת משתמש חדש</button>`:''}
+    </div>
+    <div class="toolbar">
+      <input type="search" placeholder="חיפוש לפי שם, אימייל או תפקיד…" value="${esc(usrSearch)}" oninput="usrSearch=this.value;render()">
+    </div>
+    <div class="card tbl-wrap"><table>
+      <thead><tr><th>משתמש</th><th>אימייל</th><th>תפקיד</th><th>סטטוס</th>${canEdit?'<th>פעולות</th>':''}</tr></thead>
+      <tbody>${list.map(u=>`
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:10px">
+            <span class="avatar" style="background:${roleColor(u.role)}">${esc(initials(u.name))}</span>
+            <div><b>${esc(u.name)}</b>${u.email===session.email?'<span class="badge b-gold" style="margin-right:6px;font-size:10px">אני</span>':''}</div>
+          </div></td>
+          <td dir="ltr" style="text-align:right;font-size:13px">${esc(u.email)}</td>
+          <td><span class="badge" style="background:${roleColor(u.role)}22;color:${roleColor(u.role)}">${roleLabel(u.role)}</span></td>
+          <td><span class="badge ${u.status==='מושבת'?'b-gray':'b-green'}">${u.status||'פעיל'}</span></td>
+          ${canEdit?`<td>
+            <button class="icon-btn" title="עריכת הרשאות" onclick="openEditUserPerms('${esc(u.email)}')">⚙️</button>
+            <button class="icon-btn" title="שינוי תפקיד" onclick="openChangeRole('${esc(u.email)}')">🏷️</button>
+            ${u.email!==session.email?`<button class="icon-btn" title="${u.status==='מושבת'?'הפעלה':'השבתה'}" onclick="toggleUserStatus('${esc(u.email)}')">${u.status==='מושבת'?'✅':'⛔'}</button>`:''}
+          </td>`:''}</tr>`).join('')}
+      </tbody></table></div>
+    <div style="margin-top:18px;padding:16px;background:var(--bg);border-radius:var(--radius);font-size:13px;color:var(--muted)">
+      <b>תפקידים מובנים:</b><br>
+      ${Object.values(ROLES).map(r=>`<span class="badge" style="background:${r.color}22;color:${r.color};margin:4px 0 0 6px">${r.label}</span> — ${r.desc}`).join('<br>')}
+    </div>`;
+}
+
+function openInviteForm(){
+  if(!isSuperAdmin()){toast('הזמנת משתמשים שמורה לסופר אדמין','err');return}
+  const roleOpts=Object.keys(ROLES).map(r=>`<option ${r==='עובד'?'selected':''}>${r}</option>`).join('');
+  openModal('הזמנת משתמש חדש',`
+    <p style="font-size:13.5px;color:var(--muted);margin-bottom:14px">המשתמש ייווצר ב-Supabase Auth ויוכל להתחבר מיד עם האימייל והסיסמה שתבחרו. בשלב מאוחר יותר אפשר לשלוח הזמנה באימייל.</p>
+    <div class="form-grid">
+      <div><label class="req">שם מלא</label><input id="f_unm" placeholder="למשל: דנה כהן"></div>
+      <div><label class="req">אימייל</label><input id="f_uem" type="email" dir="ltr" placeholder="dana@manof4biz.co.il"></div>
+      <div><label class="req">סיסמה ראשונית</label><input id="f_upw" type="text" dir="ltr" placeholder="לפחות 8 תווים"></div>
+      <div><label class="req">תפקיד</label><select id="f_url">${roleOpts}</select></div>
+    </div>
+    <div class="section-title" style="margin-top:20px">הרשאות (ברירת מחדל לפי תפקיד — ניתן לשנות אח"כ)</div>
+    <p style="font-size:12.5px;color:var(--muted)">אחרי ההזמנה תוכלו להתאים את ההרשאות ברמת המשתמש מכפתור ⚙️</p>
+    <div id="f_urolePreview" style="margin-top:8px"></div>`,
+    async ()=>{
+      const nm=val('f_unm'),em=val('f_uem').toLowerCase(),pw=val('f_upw'),rl=val('f_url');
+      if(!nm||!em||!pw){toast('שם, אימייל וסיסמה הם שדות חובה','err');return false}
+      if(pw.length<8){toast('הסיסמה חייבת להכיל לפחות 8 תווים','err');return false}
+      if(!/^\S+@\S+\.\S+$/.test(em)){toast('כתובת אימייל לא תקינה','err');return false}
+      if((state.appUsers||[]).find(u=>u.email===em)){toast('משתמש עם אימייל זה כבר קיים','err');return false}
+      try{
+        const {data,error}=await sb.auth.admin.createUser({email:em,password:pw,email_confirm:true});
+        if(error){
+          if(error.message?.includes('not authorized'))
+            toast('נדרש service_role key ליצירת משתמשים — ראו הוראות בקובץ','err');
+          else toast('שגיאה ב-Supabase Auth: '+error.message,'err');
+          return false;
+        }
+        const perms=defaultPerms(rl);
+        const {error:e2}=await sb.from('app_users').insert({email:em,name:nm,role:rl,status:'פעיל',permissions:JSON.stringify(perms)});
+        if(e2)throw e2;
+        await loadAppUsers();
+        toast('המשתמש '+nm+' נוסף למערכת בהצלחה');
+      }catch(err){toast('שגיאה: '+(err.message||String(err)),'err');return false}
+    },{saveLabel:'צור משתמש'});
+  // role preview
+  const sel=document.getElementById('f_url');
+  const showPreview=()=>{
+    const r=sel.value, p=ROLES[r]?.perms||{};
+    const mods={dashboard:'דשבורד',employees:'עובדים',clients:'לקוחות',leads:'לידים',candidates:'מאגר קו"ח',hours:'שעות',payments:'תשלומים',vacations:'חופשות',users:'משתמשים'};
+    document.getElementById('f_urolePreview').innerHTML=Object.entries(mods).map(([k,label])=>{
+      const m=p[k];
+      const hasView=typeof m==='boolean'?m:!!m?.view;
+      const hasEdit=typeof m==='boolean'?m:!!m?.edit;
+      return `<span class="badge ${hasView?(hasEdit?'b-green':'b-blue'):'b-gray'}" style="margin:2px">${label}: ${hasView?(hasEdit?'צפייה + עריכה':'צפייה בלבד'):'חסום'}</span>`;
+    }).join('');
+  };
+  sel.addEventListener('change',showPreview);showPreview();
+}
+
+function openChangeRole(email){
+  if(!isSuperAdmin())return;
+  const u=(state.appUsers||[]).find(x=>x.email===email); if(!u)return;
+  const roleOpts=Object.keys(ROLES).map(r=>`<option ${u.role===r?'selected':''}>${r}</option>`).join('');
+  openModal(`שינוי תפקיד — ${esc(u.name)}`,`
+    <div class="form-grid">
+      <div class="full"><label class="req">תפקיד חדש</label><select id="f_nrl">${roleOpts}</select></div>
+      <div class="full"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--txt)"><input type="checkbox" id="f_resetPerms" style="width:auto" checked> אפס הרשאות לברירת המחדל של התפקיד החדש</label></div>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);margin-top:10px">אם לא מסומן, ההרשאות הנוכחיות של המשתמש יישמרו (גם אם הן חורגות מהתפקיד החדש).</p>`,
+    async ()=>{
+      const nr=val('f_nrl');
+      const reset=document.getElementById('f_resetPerms').checked;
+      const upd={role:nr};
+      if(reset)upd.permissions=JSON.stringify(defaultPerms(nr));
+      const {error}=await sb.from('app_users').update(upd).eq('email',email);
+      if(error){toast('שגיאה: '+error.message,'err');return false}
+      await loadAppUsers();
+      if(email===session.email){const nPerms=reset?defaultPerms(nr):session.perms;session.role=nr;session.perms=nPerms;renderNav();}
+      toast('התפקיד של '+u.name+' עודכן ל: '+nr);
+    });
+}
+
+function openEditUserPerms(email){
+  if(!isSuperAdmin())return;
+  const u=(state.appUsers||[]).find(x=>x.email===email); if(!u)return;
+  let perms; try{perms=u.permissions?JSON.parse(u.permissions):defaultPerms(u.role)}catch(e){perms=defaultPerms(u.role)}
+  const mods=[
+    {k:'dashboard',label:'דשבורד',actions:[{a:'view',l:'צפייה'},{a:'financials',l:'נתונים כספיים'}]},
+    {k:'employees',label:'עובדים',actions:[{a:'view',l:'צפייה'},{a:'edit',l:'עריכה'},{a:'salaries',l:'צפייה בשכר'}]},
+    {k:'clients',label:'לקוחות',actions:[{a:'view',l:'צפייה'},{a:'edit',l:'עריכה'}]},
+    {k:'leads',label:'לידים',actions:[{a:'view',l:'צפייה'},{a:'edit',l:'עריכה'}]},
+    {k:'candidates',label:'מאגר קו"ח',actions:[{a:'view',l:'צפייה'},{a:'edit',l:'עריכה'}]},
+    {k:'hours',label:'שעות',actions:[{a:'view',l:'צפייה'},{a:'edit',l:'עריכה'}]},
+    {k:'payments',label:'תשלומים',actions:[{a:'view',l:'צפייה'},{a:'edit',l:'עריכה'}]},
+    {k:'vacations',label:'חופשות',actions:[{a:'view',l:'צפייה'},{a:'edit',l:'עריכה (מחיקה)'}]},
+    {k:'users',label:'ניהול משתמשים',actions:[{a:'view',l:'צפייה'},{a:'edit',l:'עריכה + הזמנה'}]}
+  ];
+  const rows=mods.map(m=>{
+    const mp=perms[m.k]||{};
+    const isB=typeof mp==='boolean';
+    return `<tr><td style="font-weight:700">${m.label}</td>${m.actions.map(ac=>{
+      const checked=isB?mp:!!mp[ac.a];
+      return `<td style="text-align:center"><label style="cursor:pointer;margin:0"><input type="checkbox" class="perm-chk" data-mod="${m.k}" data-act="${ac.a}" style="width:auto" ${checked?'checked':''}> ${ac.l}</label></td>`;
+    }).join('')}${m.actions.length<3?'<td></td>'.repeat(3-m.actions.length):''}</tr>`;
+  }).join('');
+  openModal(`הרשאות — ${esc(u.name)} (${roleLabel(u.role)})`,`
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">סמנו בדיוק מה המשתמש יכול לראות ולעשות. שינויים ייכנסו לתוקף בכניסה הבאה שלו.</p>
+    <table style="font-size:13px"><thead><tr><th>מודול</th><th style="text-align:center">הרשאה 1</th><th style="text-align:center">הרשאה 2</th><th style="text-align:center">הרשאה 3</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div style="margin-top:14px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--txt)"><input type="checkbox" class="perm-chk" data-mod="backup" data-act="_" style="width:auto" ${perms.backup?'checked':''}> גיבוי ושחזור</label>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="resetPermsToRole('${esc(u.role)}')">♻️ אפס לברירת מחדל (${roleLabel(u.role)})</button>
+    </div>`,
+    async ()=>{
+      const newPerms={};
+      document.querySelectorAll('.perm-chk').forEach(cb=>{
+        const mod=cb.dataset.mod, act=cb.dataset.act;
+        if(mod==='backup'){newPerms.backup=cb.checked;return}
+        if(!newPerms[mod])newPerms[mod]={};
+        newPerms[mod][act]=cb.checked;
+      });
+      const {error}=await sb.from('app_users').update({permissions:JSON.stringify(newPerms)}).eq('email',email);
+      if(error){toast('שגיאה: '+error.message,'err');return false}
+      await loadAppUsers();
+      if(email===session.email){session.perms=newPerms;renderNav();}
+      toast('ההרשאות של '+u.name+' עודכנו');
+    },{saveLabel:'שמור הרשאות',wide:true});
+}
+function resetPermsToRole(role){
+  const dp=defaultPerms(role);
+  document.querySelectorAll('.perm-chk').forEach(cb=>{
+    const mod=cb.dataset.mod, act=cb.dataset.act;
+    if(mod==='backup'){cb.checked=!!dp.backup;return}
+    const m=dp[mod]; cb.checked=typeof m==='boolean'?m:!!m?.[act];
+  });
+  toast('אופסו לברירת מחדל של '+roleLabel(role));
+}
+
+async function toggleUserStatus(email){
+  if(!isSuperAdmin())return;
+  const u=(state.appUsers||[]).find(x=>x.email===email);if(!u)return;
+  const newSt=u.status==='מושבת'?'פעיל':'מושבת';
+  if(newSt==='מושבת'&&!confirm(`להשבית את ${u.name}? המשתמש לא יוכל להתחבר.`))return;
+  const {error}=await sb.from('app_users').update({status:newSt}).eq('email',email);
+  if(error){toast('שגיאה: '+error.message,'err');return}
+  await loadAppUsers(); render();
+  toast(u.name+' '+( newSt==='מושבת'?'הושבת':'הופעל'));
+}
+
+async function loadAppUsers(){
+  const {data}=await sb.from('app_users').select('*');
+  state.appUsers=(data||[]).sort((a,b)=>{
+    const order={'סופר אדמין':0,'אדמין':1,'מנהל צוות':2,'עובד':3,'צופה':4};
+    return (order[a.role]??5)-(order[b.role]??5);
+  });
+}
+
+/* ================= BOOT ================= */
+(async function(){
+  if(SUPABASE_URL.startsWith('PASTE'))return;
+  try{
+    const {data}=await sb.auth.getSession();
+    const em=data?.session?.user?.email;
+    if(em)await initSession(em.toLowerCase());
+  }catch(e){console.warn(e)}
+})();
+</script>
+</body>
+</html>
