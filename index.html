@@ -220,8 +220,8 @@ select.inline-status{width:auto;padding:4px 26px 4px 8px;font-size:12.5px;border
 <script>
 /* ================= CORE: users, state, storage ================= */
 /* ==== חיבור Supabase — מדביקים כאן את הפרטים מהפרויקט (Settings → API) ==== */
-const SUPABASE_URL='PASTE_YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY='PASTE_YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL='https://lnlrbpgfszgavjncdzge.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxubHJicGdmc3pnYXZqbmNkemdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI1MjUsImV4cCI6MjA5OTcwODUyNX0.R1ZEFoO18k0zwxsLAjVCE-ceCiblDbnnNpLeZutnFyE';
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 let session=null, tab='dashboard', period='all';
 let charts=[];
