@@ -1010,15 +1010,43 @@ function convertLead(id){
 
 /* ================= CANDIDATES (CV bank) ================= */
 const CAND_STATUSES=['חדש','נבדק','זומן לראיון','הושם','במאגר','לא רלוונטי'];
-let candSearch='',candFieldFilter='all',candStFilter='all';
+let candSearch='',candFieldFilter='all',candStFilter='all',candSkillFilter=[],candSkillChips=[];
 function candBadge(s){return {'חדש':'b-blue','נבדק':'b-purple','זומן לראיון':'b-yellow','הושם':'b-green','במאגר':'b-gold','לא רלוונטי':'b-gray'}[s]||'b-gray'}
-function renderCandidates(){
-  const q=candSearch.toLowerCase();
-  const fields=[...new Set(state.candidates.map(c=>c.field))].sort();
-  const list=state.candidates.filter(c=>{
-    const t=(c.name+' '+c.field+' '+c.skills.join(' ')).toLowerCase();
-    return (!q||t.includes(q))&&(candFieldFilter==='all'||c.field===candFieldFilter)&&(candStFilter==='all'||c.status===candStFilter);
+function topCandSkills(n){
+  const freq={};
+  state.candidates.forEach(c=>(c.skills||[]).forEach(s=>{const k=(s||'').trim();if(k)freq[k]=(freq[k]||0)+1}));
+  return Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,n);
+}
+function candFilteredList(){
+  const q=candSearch.trim().toLowerCase();
+  return state.candidates.filter(c=>{
+    if(q){const t=(c.name+' '+(c.field||'')+' '+(c.skills||[]).join(' ')+' '+(c.notes||'')+' '+(c.phone||'')+' '+(c.email||'')).toLowerCase();if(!t.includes(q))return false}
+    if(candFieldFilter!=='all'&&c.field!==candFieldFilter)return false;
+    if(candStFilter!=='all'&&c.status!==candStFilter)return false;
+    if(candSkillFilter.length){const cs=(c.skills||[]).map(s=>s.toLowerCase());if(!candSkillFilter.every(f=>cs.some(s=>s.includes(f.toLowerCase()))))return false}
+    return true;
   });
+}
+function candRowsHtml(list){
+  return list.length?list.map(c=>`
+        <tr>
+          <td><b>${esc(c.name)}</b><div style="font-size:12px;color:var(--muted)" dir="ltr">${esc(c.phone||'')}</div></td>
+          <td>${esc(c.field)}</td>
+          <td>${c.experience?c.experience+' שנים':'—'}</td>
+          <td style="max-width:220px">${c.skills.map(s=>`<span class="tag">${esc(s)}</span>`).join('')||'—'}</td>
+          <td><span class="badge b-gray">${esc(c.source||'—')}</span></td>
+          <td>${c.cvFile?fileChip(c.cvFile):'<span style="color:var(--muted)">—</span>'}</td>
+          <td><select class="inline-status" onchange="setCandStatus('${c.id}',this.value)">${CAND_STATUSES.map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}</select></td>
+          <td><button class="icon-btn" onclick="openCandidateForm('${c.id}')">✏️</button><button class="icon-btn" onclick="delCandidate('${c.id}')">🗑️</button></td>
+        </tr>`).join(''):`<tr><td colspan="8"><div class="empty-state"><div class="big">📄</div>לא נמצאו מועמדים תואמים</div></td></tr>`;
+}
+function updateCandBody(){const b=document.getElementById('candBody');if(b)b.innerHTML=candRowsHtml(candFilteredList());}
+function toggleCandSkillIdx(i){const s=candSkillChips[i];if(s==null)return;const j=candSkillFilter.indexOf(s);if(j>=0)candSkillFilter.splice(j,1);else candSkillFilter.push(s);render();}
+function clearCandSkills(){candSkillFilter=[];render();}
+function renderCandidates(){
+  const fields=[...new Set(state.candidates.map(c=>c.field))].filter(Boolean).sort();
+  candSkillChips=topCandSkills(20);
+  const list=candFilteredList();
   const n=s=>state.candidates.filter(c=>c.status===s).length;
   const inProc=n('נבדק')+n('זומן לראיון');
   document.getElementById('main').innerHTML=`
@@ -1034,7 +1062,7 @@ function renderCandidates(){
       <div class="cell"><div class="n">${n('במאגר')}</div><div class="t">במאגר</div></div>
     </div>
     <div class="toolbar">
-      <input type="search" placeholder="חיפוש לפי שם, תחום או כישור…" value="${esc(candSearch)}" oninput="candSearch=this.value;render()">
+      <input id="candSearchInput" type="search" placeholder="חיפוש לפי שם, תחום, כישור, עיר…" value="${esc(candSearch)}" oninput="candSearch=this.value;updateCandBody()">
       <select onchange="candFieldFilter=this.value;render()">
         <option value="all">כל התחומים</option>
         ${fields.map(f=>`<option ${candFieldFilter===f?'selected':''}>${esc(f)}</option>`).join('')}
@@ -1044,20 +1072,13 @@ function renderCandidates(){
         ${CAND_STATUSES.map(s=>`<option ${candStFilter===s?'selected':''}>${s}</option>`).join('')}
       </select>
     </div>
+    <div style="margin:-2px 0 14px">
+      <div style="font-size:12.5px;color:var(--muted);margin-bottom:6px">סינון מהיר לפי כישורים (בחרי כמה שתרצי — יוצגו מועמדים עם כל הכישורים שנבחרו)${candSkillFilter.length?` · <a href="#" onclick="clearCandSkills();return false" style="color:var(--petrol)">נקה (${candSkillFilter.length})</a>`:''}</div>
+      <div>${candSkillChips.map((s,i)=>`<button type="button" class="tag" style="cursor:pointer;border:none;font:inherit;${candSkillFilter.includes(s)?'background:var(--petrol);color:#fff;':''}" onclick="toggleCandSkillIdx(${i})">${esc(s)}${candSkillFilter.includes(s)?' ✓':''}</button>`).join('')}</div>
+    </div>
     <div class="card tbl-wrap"><table>
       <thead><tr><th>מועמד</th><th>תחום</th><th>ניסיון</th><th>כישורים</th><th>מקור</th><th>קו"ח</th><th>סטטוס</th><th></th></tr></thead>
-      <tbody>${list.length?list.map(c=>`
-        <tr>
-          <td><b>${esc(c.name)}</b><div style="font-size:12px;color:var(--muted)" dir="ltr">${esc(c.phone||'')}</div></td>
-          <td>${esc(c.field)}</td>
-          <td>${c.experience?c.experience+' שנים':'—'}</td>
-          <td style="max-width:220px">${c.skills.map(s=>`<span class="tag">${esc(s)}</span>`).join('')||'—'}</td>
-          <td><span class="badge b-gray">${esc(c.source||'—')}</span></td>
-          <td>${c.cvFile?fileChip(c.cvFile):'<span style="color:var(--muted)">—</span>'}</td>
-          <td><select class="inline-status" onchange="setCandStatus('${c.id}',this.value)">${CAND_STATUSES.map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}</select></td>
-          <td><button class="icon-btn" onclick="openCandidateForm('${c.id}')">✏️</button><button class="icon-btn" onclick="delCandidate('${c.id}')">🗑️</button></td>
-        </tr>`).join(''):`<tr><td colspan="8"><div class="empty-state"><div class="big">📄</div>לא נמצאו מועמדים תואמים</div></td></tr>`}
-      </tbody></table></div>
+      <tbody id="candBody">${candRowsHtml(list)}</tbody></table></div>
     <p style="margin-top:12px;font-size:12.5px;color:var(--muted)">💡 בשלב עתידי: קליטה אוטומטית של קו"ח מהמייל עם זיהוי תחום וכישורים באמצעות AI (סעיף 3.5 באפיון).</p>`;
 }
 function setCandStatus(id,s){state.candidates.find(x=>x.id===id).status=s;bg(dbUpdate('candidates',id,{status:s}));render();toast('סטטוס המועמד עודכן: '+s)}
