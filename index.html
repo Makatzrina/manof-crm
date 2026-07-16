@@ -167,14 +167,60 @@ select.inline-status{width:auto;padding:4px 26px 4px 8px;font-size:12.5px;border
 .import-zone:hover{border-color:var(--petrol)}
 .locked-note{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
 
+.tbl-wrap{-webkit-overflow-scrolling:touch}
+
 @media (max-width:860px){
-  .sidebar{width:100%;height:auto;bottom:auto;top:auto;position:fixed;bottom:0;flex-direction:row;padding:0}
+  .sidebar{width:100%;height:auto;bottom:auto;top:auto;position:fixed;bottom:0;flex-direction:row;padding:0;box-shadow:0 -2px 12px rgba(0,0,0,.18)}
   .sb-brand,.sb-user{display:none}
-  .nav{display:flex;flex:1;padding:6px;gap:2px;overflow-x:auto}
-  .nav button{flex-direction:column;gap:2px;font-size:10.5px;padding:7px 6px;min-width:64px;justify-content:center;text-align:center}
+  .nav{display:flex;flex:1;padding:6px 6px calc(6px + env(safe-area-inset-bottom));gap:2px;overflow-x:auto}
+  .nav button{flex-direction:column;gap:2px;font-size:10.5px;padding:8px 6px;min-width:62px;justify-content:center;text-align:center}
+  .nav .ico{font-size:19px}
   .nav button.active::before{display:none}
-  .main{margin-right:0;padding:18px 14px 90px}
+  .main{margin-right:0;padding:18px 14px 96px}
   .form-grid{grid-template-columns:1fr}
+}
+
+/* ===== Phone layout ===== */
+@media (max-width:680px){
+  body{font-size:14px}
+  .main{padding:14px 12px 100px}
+  .page-head{margin-bottom:16px}
+  .page-head h2{font-size:19px}
+  .page-head>.btn,.page-head button.btn{width:100%;justify-content:center}
+  .toolbar{gap:8px}
+  .toolbar input[type=text],.toolbar input[type=search],.toolbar select{max-width:none;width:100%;min-width:0}
+  .quick-actions{gap:8px}
+  .quick-actions .btn{flex:1 1 44%;justify-content:center}
+  .stats{grid-template-columns:1fr 1fr;gap:10px}
+  .stat{padding:13px 14px}
+  .stat .val{font-size:20px}
+  .pipe{grid-template-columns:1fr 1fr;gap:8px}
+  .charts-grid{gap:12px}
+  .chart-box{height:220px}
+  .btn{padding:10px 16px}
+
+  /* Tables become cards */
+  .tbl-wrap{overflow-x:visible;border:none!important;box-shadow:none!important;background:transparent!important}
+  .tbl-wrap table{display:block;font-size:14px}
+  .tbl-wrap thead{display:none}
+  .tbl-wrap tbody{display:block}
+  .tbl-wrap tr{display:block;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:4px 14px;margin-bottom:12px}
+  .tbl-wrap td{display:block;padding:9px 0;border-bottom:1px solid var(--line);white-space:normal;text-align:right}
+  .tbl-wrap tr td:last-child{border-bottom:none}
+  .tbl-wrap td::before{content:attr(data-label);display:block;font-weight:700;color:var(--muted);font-size:11.5px;margin-bottom:3px}
+  .tbl-wrap td:not([data-label])::before{content:none}
+  .tbl-wrap td[colspan]{text-align:center}
+  .tbl-wrap td[colspan]::before{content:none}
+  .tbl-wrap td .icon-btn{font-size:19px;padding:7px 12px}
+  select.inline-status{padding:7px 26px 7px 10px;font-size:13.5px}
+
+  /* Modals near full-screen, reachable footer */
+  .modal-back{padding:0}
+  .modal,.modal.wide{width:100%;max-width:100%;min-height:100vh;max-height:100vh;border-radius:0}
+  .modal-body{padding:16px}
+  .modal-head{padding:14px 16px}
+  .modal-foot{padding:12px 16px;flex-wrap:wrap;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  .modal-foot .btn{flex:1;justify-content:center}
 }
 @media print{.sidebar{display:none}.main{margin:0}}
 </style>
@@ -418,6 +464,16 @@ function render(){
   const fn={dashboard:renderDashboard,employees:renderEmployees,clients:renderClients,leads:renderLeads,candidates:renderCandidates,hours:renderHours,payments:renderPayments,vacations:renderVacationsPage,users:renderUsers}[tab];
   const tabObj=TABS.find(t=>t.id===tab);if(tabObj&&!can(tabObj.perm,'view')){go('dashboard');return}
   fn();
+  labelTables();
+}
+/* Mobile: auto-label each table cell with its column header, so tables can render as cards on phones */
+function labelTables(){
+  document.querySelectorAll('.tbl-wrap table').forEach(t=>{
+    const hs=[...t.querySelectorAll('thead th')].map(th=>th.textContent.trim());
+    t.querySelectorAll('tbody tr').forEach(tr=>{
+      [...tr.children].forEach((td,i)=>{ if(!td.hasAttribute('colspan')&&hs[i])td.setAttribute('data-label',hs[i]); });
+    });
+  });
 }
 
 /* ================= HELPERS ================= */
@@ -1040,7 +1096,7 @@ function candRowsHtml(list){
           <td><button class="icon-btn" onclick="openCandidateForm('${c.id}')">✏️</button><button class="icon-btn" onclick="delCandidate('${c.id}')">🗑️</button></td>
         </tr>`).join(''):`<tr><td colspan="8"><div class="empty-state"><div class="big">📄</div>לא נמצאו מועמדים תואמים</div></td></tr>`;
 }
-function updateCandBody(){const b=document.getElementById('candBody');if(b)b.innerHTML=candRowsHtml(candFilteredList());}
+function updateCandBody(){const b=document.getElementById('candBody');if(b)b.innerHTML=candRowsHtml(candFilteredList());labelTables();}
 function toggleCandSkillIdx(i){const s=candSkillChips[i];if(s==null)return;const j=candSkillFilter.indexOf(s);if(j>=0)candSkillFilter.splice(j,1);else candSkillFilter.push(s);render();}
 function clearCandSkills(){candSkillFilter=[];render();}
 function renderCandidates(){
